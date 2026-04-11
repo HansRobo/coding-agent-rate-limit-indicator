@@ -7,14 +7,16 @@ A GNOME Shell extension that monitors rate limit usage for multiple coding agent
 
 ## Features
 
-- **Multi-provider support**: Monitor Claude Code (Anthropic), Codex (OpenAI), and more
+- **Multi-provider support**: Monitor Claude Code (Anthropic), Codex (OpenAI), GLM (z.ai), and more
 - **Multi-account**: Configure multiple accounts per provider
-- **Top bar indicator**: Concise usage display with text, progress bar, or both
-- **Detailed popup menu**: Per-account breakdown with progress bars, reset timers, and usage percentages
+- **Top bar indicator**: Concise usage display with text, progress bar, or both; SVG provider icons fetched from CDN and cached locally
+- **Detailed popup menu**: Per-account breakdown with progress bars, reset timers, and usage percentages; theme-adaptive colors for light/dark GNOME Shell themes
 - **Color-coded usage**: Green → Yellow → Orange → Red as usage increases
 - **Extensible architecture**: Clean provider pattern makes it easy to add new services
 - **Secure credential storage**: Tokens stored in GNOME Keyring (Secret Service)
-- **Auto-detect credentials**: Claude Code reads OAuth tokens from local config automatically
+- **Auto-detect credentials**: Claude Code and Codex read OAuth tokens from local config automatically
+- **Automatic token refresh**: OAuth tokens are refreshed automatically when expired (Claude, Codex)
+- **Rate limit resilience**: 429 responses trigger per-account backoff using `Retry-After` header
 - **Proxy support**: Optional HTTP proxy for all API requests
 
 ## Supported Providers
@@ -22,7 +24,8 @@ A GNOME Shell extension that monitors rate limit usage for multiple coding agent
 | Provider | Auth Method | API |
 |----------|-----------|-----|
 | **Claude Code** (Anthropic) | Auto-detect from `~/.claude/.credentials.json` | Anthropic OAuth Usage API |
-| **Codex** (OpenAI/ChatGPT) | Manual bearer token | ChatGPT Internal API |
+| **Codex** (OpenAI/ChatGPT) | Auto-detect from `~/.codex/auth.json` | ChatGPT Internal API |
+| **GLM** (z.ai) | Manual API key | z.ai Monitor API |
 
 ### Adding a new provider
 
@@ -89,12 +92,16 @@ gnome-extensions prefs coding-agent-rate-limit-indicator@github.com
 1. Open extension preferences → Accounts tab
 2. Click "Add Codex account"
 3. Enter a display name
-4. Get your bearer token:
-   - Open [chatgpt.com](https://chatgpt.com) in a browser
-   - Open DevTools (F12) → Network tab
-   - Navigate to Codex settings/usage page
-   - Find a request to `backend-api` and copy the `Authorization` header value
-5. Paste the token in the account settings
+4. The extension auto-detects your OAuth token from `~/.codex/auth.json` (written by the Codex CLI after login)
+5. For a custom credential file location, set the `CODEX_HOME` environment variable or specify a path in account settings
+
+#### GLM (z.ai)
+
+1. Open extension preferences → Accounts tab
+2. Click "Add GLM account"
+3. Enter a display name
+4. Enter your z.ai API key in the token field
+   - Log in to [z.ai](https://z.ai) and generate an API key from your account settings
 
 ## Architecture
 
@@ -104,11 +111,13 @@ gnome-extensions prefs coding-agent-rate-limit-indicator@github.com
 ├── constants.js          # Shared constants
 ├── accounts.js           # Multi-account CRUD operations
 ├── secret.js             # GNOME Keyring integration
+├── iconCache.js          # Fetches and caches provider SVG icons from CDN
 ├── providerRegistry.js   # Provider registration and lookup
 ├── providers/
 │   ├── base.js           # Base provider interface
 │   ├── claude.js         # Claude Code (Anthropic) provider
-│   └── codex.js          # Codex (OpenAI) provider
+│   ├── codex.js          # Codex (OpenAI) provider
+│   └── glm.js            # GLM (z.ai) provider
 ├── schemas/              # GSettings schema
 ├── stylesheet.css        # Extension styles
 ├── install.sh            # Installation script
