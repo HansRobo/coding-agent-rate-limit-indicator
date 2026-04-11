@@ -2,6 +2,7 @@
 // Fetches usage data from the ChatGPT internal API.
 
 import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
 import Soup from 'gi://Soup?version=3.0';
 
 import {BaseProvider} from './base.js';
@@ -28,25 +29,102 @@ export class CodexProvider extends BaseProvider {
     }
 
     static get supportsAutoDetect() {
-        return false;
-    }
-
-    static get requiresManualToken() {
         return true;
     }
 
+    static get requiresManualToken() {
+        return false;
+    }
+
     static getDefaultConfig() {
-        return {};
+        return {
+            credentialPath: '',  // empty = use default ~/.codex/auth.json
+        };
     }
 
     static getConfigFields() {
-        return [];
+        return [
+            {
+                key: 'credentialPath',
+                label: 'Credentials file path (empty for default)',
+                type: 'string',
+                placeholder: '~/.codex/auth.json',
+            },
+        ];
+    }
+
+    /**
+     * Resolve the credentials file path for this account.
+     * Priority: account config > CODEX_HOME env > default.
+     */
+    _resolveCredentialPath(account) {
+        const customPath = account.config?.credentialPath;
+        if (customPath && customPath.trim() !== '') {
+            if (customPath === '~' || customPath.startsWith('~/')) {
+                return GLib.get_home_dir() + customPath.substring(1);
+            }
+            return customPath;
+        }
+
+        const codexHome = GLib.getenv('CODEX_HOME');
+        if (codexHome) {
+            return GLib.build_filenamev([codexHome, 'auth.json']);
+        }
+
+        return GLib.build_filenamev([GLib.get_home_dir(), '.codex', 'auth.json']);
+    }
+
+    /**
+     * Read OAuth token from the Codex CLI auth file (~/.codex/auth.json).
+     */
+    _readTokenFromFile(filePath) {
+        return new Promise((resolve, reject) => {
+            const file = Gio.File.new_for_path(filePath);
+            file.load_contents_async(null, (f, result) => {
+                try {
+                    const [ok, contents] = f.load_contents_finish(result);
+                    if (!ok) {
+                        reject(new Error(`Failed to read ${filePath}`));
+                        return;
+                    }
+
+                    const decoder = new TextDecoder('utf-8');
+                    const json = JSON.parse(decoder.decode(contents));
+
+                    // Prefer API key if explicitly set
+                    const apiKey = json?.OPENAI_API_KEY;
+                    if (apiKey && typeof apiKey === 'string' && apiKey.trim() !== '') {
+                        resolve(apiKey.trim());
+                        return;
+                    }
+
+                    const token = json?.tokens?.access_token;
+                    if (!token) {
+                        reject(new Error('No access token found in Codex auth file'));
+                        return;
+                    }
+
+                    resolve(token);
+                } catch (e) {
+                    reject(new Error(`Failed to parse Codex credentials: ${e.message}`));
+                }
+            });
+        });
     }
 
     async fetchUsage(account, session, getToken) {
-        const token = await getToken(account.id);
+        // Try to get token: first from keyring (manual override), then from file
+        let token = await getToken(account.id);
+
         if (!token) {
-            throw new Error('No bearer token configured. Set it in Settings.');
+            const credPath = this._resolveCredentialPath(account);
+            token = await this._readTokenFromFile(credPath);
+        }
+
+        if (!token) {
+            throw new Error(
+                'No authentication token available. Install Codex CLI or set token manually in Settings.'
+            );
         }
 
         // Normalize token (strip "Bearer " prefix if present)

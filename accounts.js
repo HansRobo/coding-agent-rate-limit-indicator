@@ -191,6 +191,34 @@ export function getAccountDisplayLabel(account, allVisibleAccounts, providerRegi
 }
 
 /**
+ * Auto-detect Codex CLI auth files on disk.
+ * Checks default and CODEX_HOME locations.
+ * @returns {Array<{name: string, credentialPath: string}>}
+ */
+export function detectCodexCredentials() {
+    const found = [];
+    const homeDir = GLib.get_home_dir();
+
+    const defaultPath = GLib.build_filenamev([homeDir, '.codex', 'auth.json']);
+    if (GLib.file_test(defaultPath, GLib.FileTest.EXISTS)) {
+        found.push({name: 'Default', credentialPath: ''});
+    }
+
+    const codexHome = GLib.getenv('CODEX_HOME');
+    if (codexHome) {
+        const envPath = GLib.build_filenamev([codexHome, 'auth.json']);
+        if (
+            GLib.file_test(envPath, GLib.FileTest.EXISTS) &&
+            envPath !== defaultPath
+        ) {
+            found.push({name: 'Custom', credentialPath: envPath});
+        }
+    }
+
+    return found;
+}
+
+/**
  * Auto-detect Claude accounts from credential files on disk.
  * Checks default and common locations.
  * @returns {Array<{name: string, credentialPath: string}>}
