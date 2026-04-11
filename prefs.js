@@ -170,7 +170,7 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             const addRow = new Adw.ActionRow({
                 title: `Add ${provider.displayName} account`,
                 subtitle: provider.requiresManualToken
-                    ? 'Requires manual bearer token'
+                    ? `Requires manual ${provider.tokenFieldLabel.toLowerCase()}`
                     : 'Auto-detects credentials from local config',
                 activatable: true,
             });
@@ -253,7 +253,7 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             // Token entry (for providers that need manual token)
             if (!provider || provider.requiresManualToken) {
                 const tokenRow = new Adw.PasswordEntryRow({
-                    title: 'Bearer token',
+                    title: provider ? provider.tokenFieldLabel : 'Bearer token',
                     show_apply_button: true,
                 });
                 tokenRow.connect('apply', () => {
@@ -312,9 +312,13 @@ export default class RateLimitPreferences extends ExtensionPreferences {
     }
 
     _showAddAccountDialog(window, settings, provider) {
+        const bodyText = provider.requiresManualToken
+            ? `Enter a display name and your ${provider.tokenFieldLabel.toLowerCase()}.`
+            : 'Enter a display name for this account.';
+
         const dialog = new Adw.AlertDialog({
             heading: `Add ${provider.displayName} Account`,
-            body: 'Enter a display name for this account.',
+            body: bodyText,
             close_response: 'cancel',
         });
 
@@ -322,18 +326,38 @@ export default class RateLimitPreferences extends ExtensionPreferences {
         dialog.add_response('add', 'Add');
         dialog.set_response_appearance('add', Adw.ResponseAppearance.SUGGESTED);
 
-        // Add name entry
-        const entry = new Gtk.Entry({
-            placeholder_text: 'e.g., Work, Personal',
+        const box = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            spacing: 8,
             margin_start: 12,
             margin_end: 12,
         });
-        dialog.set_extra_child(entry);
+
+        const nameEntry = new Gtk.Entry({
+            placeholder_text: 'e.g., Work, Personal',
+        });
+        box.append(nameEntry);
+
+        let tokenEntry = null;
+        if (provider.requiresManualToken) {
+            tokenEntry = new Gtk.PasswordEntry({
+                placeholder_text: provider.tokenFieldLabel,
+                show_peek_icon: true,
+            });
+            box.append(tokenEntry);
+        }
+
+        dialog.set_extra_child(box);
 
         dialog.connect('response', (_dialog, response) => {
             if (response === 'add') {
-                const name = entry.get_text().trim() || provider.displayName;
-                addAccount(settings, provider.id, name, provider.defaultConfig);
+                const name = nameEntry.get_text().trim() || provider.displayName;
+                const account = addAccount(settings, provider.id, name, provider.defaultConfig);
+                if (tokenEntry) {
+                    const token = tokenEntry.get_text().trim();
+                    if (token)
+                        storeToken(account.id, token);
+                }
             }
         });
 

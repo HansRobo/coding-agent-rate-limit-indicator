@@ -104,6 +104,15 @@ export class BaseProvider {
     }
 
     /**
+     * Label for the token input field in the settings UI.
+     * Override in subclasses to match the provider's own terminology.
+     * @returns {string}
+     */
+    static get tokenFieldLabel() {
+        return 'Bearer token';
+    }
+
+    /**
      * Fetch usage data for the given account.
      *
      * @param {Object} account        - Account object {id, provider, name, config}

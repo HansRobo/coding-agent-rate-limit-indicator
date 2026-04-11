@@ -83,6 +83,11 @@
   /* color inherits from theme */
 }
 
+.m3-provider-pill-glm {
+  background-color: rgba(59, 130, 246, 0.40);
+  /* z.ai brand blue */
+}
+
 /* Updated/stale timestamp */
 .m3-updated-label {
   font-size: 10px;

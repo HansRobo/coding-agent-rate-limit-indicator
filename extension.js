@@ -633,6 +633,7 @@ class RateLimitIndicator extends PanelMenu.Button {
         if (lower.includes('hour')) return match ? `${match[1]}h` : label.substring(0, 2);
         if (lower.includes('day')) return match ? `${match[1]}d` : label.substring(0, 2);
         if (lower.includes('week')) return 'wk';
+        if (lower.includes('month')) return 'mo';
         if (lower.includes('primary')) return '1°';
         return label.substring(0, 3);
     }

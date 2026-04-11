@@ -3,11 +3,15 @@
 // --- Provider IDs ---
 export const PROVIDER_CLAUDE = 'claude';
 export const PROVIDER_CODEX = 'codex';
+export const PROVIDER_GLM = 'glm';
 
 // --- Claude (Anthropic) ---
 export const CLAUDE_API_URL = 'https://api.anthropic.com/api/oauth/usage';
 export const CLAUDE_BETA_HEADER = 'oauth-2025-04-20';
 
+
+// --- GLM (z.ai) ---
+export const GLM_API_URL = 'https://api.z.ai/api/monitor/usage/quota/limit';
 
 // --- Codex (OpenAI / ChatGPT) ---
 export const CODEX_API_BASE = 'https://chatgpt.com';
@@ -27,6 +31,7 @@ export const WINDOW_FIVE_HOUR = 'five_hour';
 export const WINDOW_SEVEN_DAY = 'seven_day';
 export const WINDOW_PRIMARY = 'primary';
 export const WINDOW_WEEKLY = 'weekly';
+export const WINDOW_MONTHLY = 'monthly';
 
 // --- Display modes ---
 export const DISPLAY_MODE_TEXT = 'text';

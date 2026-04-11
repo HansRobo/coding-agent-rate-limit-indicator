@@ -4,6 +4,7 @@
 
 import {ClaudeProvider} from './providers/claude.js';
 import {CodexProvider} from './providers/codex.js';
+import {GlmProvider} from './providers/glm.js';
 
 // Map of provider ID -> provider class
 const _providers = new Map();
@@ -45,6 +46,7 @@ export function getProviderList() {
         cssClass: p.cssClass,
         supportsAutoDetect: p.supportsAutoDetect,
         requiresManualToken: p.requiresManualToken,
+        tokenFieldLabel: p.tokenFieldLabel,
         configFields: p.getConfigFields(),
         defaultConfig: p.getDefaultConfig(),
     }));
@@ -64,3 +66,4 @@ export function createProviderInstance(providerId) {
 // --- Register built-in providers ---
 registerProvider(ClaudeProvider);
 registerProvider(CodexProvider);
+registerProvider(GlmProvider);
