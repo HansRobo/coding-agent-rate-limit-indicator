@@ -29,110 +29,152 @@
   transition-duration: 300ms;
 }
 
-/* === Popup menu === */
+/* === Popup menu — M3 Expressive === */
 .rate-limit-menu {
-  min-width: 320px;
+  min-width: 300px;
 }
 
-/* Account section header */
-.rate-limit-account-header {
+/* Account card: one per account, replaces multiple menu items */
+.m3-account-card {
+  padding: 6px 10px;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.04);
+  margin: 1px 0;
+}
+
+/* Account header row */
+.m3-account-name {
   font-weight: bold;
-  font-size: 13px;
-  padding: 4px 0;
+  font-size: 12px;
+  color: #f0e6dc;
 }
 
-.rate-limit-provider-tag {
+/* Provider pill badges */
+.m3-provider-pill {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 9999px;
+}
+
+.m3-provider-pill-claude {
+  background-color: rgba(217, 119, 80, 0.25);
+  color: #e8a88a;
+}
+
+.m3-provider-pill-codex {
+  background-color: rgba(16, 163, 127, 0.25);
+  color: #6dd4b8;
+}
+
+.m3-provider-pill-gemini {
+  background-color: rgba(66, 133, 244, 0.25);
+  color: #8ab4f8;
+}
+
+/* Updated/stale timestamp */
+.m3-updated-label {
+  font-size: 10px;
+  color: rgba(240, 230, 220, 0.4);
+  font-style: italic;
+}
+
+/* Window row (inline: short-label + bar + pct + reset) */
+.m3-window-label {
   font-size: 10px;
   font-weight: 600;
-  padding: 1px 6px;
+  color: rgba(240, 230, 220, 0.55);
+}
+
+/* Inline progress bar */
+.m3-bar-container {
+  background-color: rgba(255, 255, 255, 0.08);
   border-radius: 3px;
-  margin-left: 8px;
 }
 
-.rate-limit-provider-tag-claude {
-  background-color: rgba(217, 119, 80, 0.3);
-  color: #d97750;
-}
-
-.rate-limit-provider-tag-codex {
-  background-color: rgba(16, 163, 127, 0.3);
-  color: #10a37f;
-}
-
-.rate-limit-provider-tag-gemini {
-  background-color: rgba(66, 133, 244, 0.3);
-  color: #4285f4;
-}
-
-/* Usage window section */
-.rate-limit-window-label {
-  font-size: 12px;
-  color: #aaaaaa;
-  padding: 2px 0;
-}
-
-.rate-limit-window-value {
-  font-size: 12px;
-  padding: 0 0 2px 0;
-}
-
-.rate-limit-reset-label {
-  font-size: 11px;
-  color: #888888;
-  padding: 0 0 4px 0;
-}
-
-/* Progress bar in popup menu */
-.rate-limit-bar-container {
-  width: 280px;
-  height: 8px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  margin: 4px 0;
-}
-
-.rate-limit-bar-fill {
-  height: 8px;
-  border-radius: 4px;
+.m3-bar-fill {
+  border-radius: 3px;
   transition-duration: 300ms;
 }
 
 /* Usage level colors */
 .usage-low {
-  background-color: #22c55e;
+  background-color: #66bb6a;
 }
 
 .usage-medium {
-  background-color: #eab308;
+  background-color: #fdd835;
 }
 
 .usage-high {
-  background-color: #f97316;
+  background-color: #ffa726;
 }
 
 .usage-critical {
-  background-color: #ef4444;
+  background-color: #ef5350;
 }
 
-/* Stale data indicator */
-.rate-limit-stale {
-  font-style: italic;
-  color: #888888;
-}
-
-/* Error state */
-.rate-limit-error {
-  color: #ef4444;
-}
-
-/* Status line at top of menu */
-.rate-limit-status-line {
+/* Percentage value */
+.m3-pct-label {
   font-size: 11px;
-  color: #888888;
-  padding: 2px 0 4px 0;
+  font-weight: 700;
+  color: #f0e6dc;
 }
 
-/* Action items in the menu */
-.rate-limit-action-item {
-  font-size: 12px;
+/* Reset time */
+.m3-reset-label {
+  font-size: 10px;
+  color: rgba(240, 230, 220, 0.38);
+}
+
+/* State labels */
+.m3-error-label {
+  font-size: 10px;
+  color: #ef5350;
+  padding: 2px 0;
+}
+
+.m3-loading-label {
+  font-size: 10px;
+  color: rgba(240, 230, 220, 0.45);
+  font-style: italic;
+  padding: 2px 0;
+}
+
+.m3-warn-label {
+  font-size: 9px;
+  color: rgba(239, 83, 80, 0.65);
+  padding: 1px 0 0 0;
+}
+
+.m3-empty-label {
+  font-size: 11px;
+  color: rgba(240, 230, 220, 0.5);
+}
+
+/* Bottom action row: pill buttons */
+.m3-pill-button {
+  border-radius: 9999px;
+  padding: 4px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  min-height: 0;
+  border-width: 0;
+}
+
+.m3-pill-button-secondary {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #f0e6dc;
+}
+
+.m3-pill-button-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+.m3-pill-button-secondary:active {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+.m3-pill-button-secondary:focus {
+  background-color: rgba(255, 255, 255, 0.12);
 }

@@ -101,7 +101,7 @@ class RateLimitIndicator extends PanelMenu.Button {
 
         // --- Refresh on menu open ---
         this._menuOpenId = this.menu.connect('open-state-changed', (_menu, isOpen) => {
-            if (isOpen) this._rebuildMenu();
+            if (isOpen) this._buildMenu();
         });
 
         // --- Start timer and initial fetch ---
@@ -317,181 +317,190 @@ class RateLimitIndicator extends PanelMenu.Button {
         const visibleAccounts = getVisibleAccounts(this._settings);
 
         if (visibleAccounts.length === 0) {
-            const noAccountItem = new PopupMenu.PopupMenuItem(
-                'No accounts configured', {reactive: false}
-            );
+            const noAccountItem = new PopupMenu.PopupBaseMenuItem({reactive: false});
+            noAccountItem.add_child(new St.Label({
+                style_class: 'm3-empty-label',
+                text: 'No accounts configured',
+            }));
             this.menu.addMenuItem(noAccountItem);
         } else {
-            this._addAccountSections(visibleAccounts);
+            for (const account of visibleAccounts)
+                this._addSingleAccountSection(account);
         }
 
         // Separator
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        // Refresh button
-        const refreshItem = new PopupMenu.PopupMenuItem('Refresh Now');
-        refreshItem.connect('activate', () => {
+        // Compact action row: Refresh + Settings as pill buttons side by side
+        const actionItem = new PopupMenu.PopupBaseMenuItem({reactive: false});
+        const actionBox = new St.BoxLayout({
+            vertical: false,
+            x_expand: true,
+            spacing: 8,
+        });
+
+        const refreshBtn = new St.BoxLayout({
+            style_class: 'm3-pill-button m3-pill-button-secondary',
+            reactive: true,
+            track_hover: true,
+            x_expand: true,
+        });
+        refreshBtn.add_child(new St.Label({
+            text: '↺ Refresh',
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+        }));
+        refreshBtn.connect('button-release-event', () => {
             this._refresh();
+            this.menu.close();
         });
-        this.menu.addMenuItem(refreshItem);
+        actionBox.add_child(refreshBtn);
 
-        // Settings button
-        const settingsItem = new PopupMenu.PopupMenuItem('Settings');
-        settingsItem.connect('activate', () => {
+        const settingsBtn = new St.BoxLayout({
+            style_class: 'm3-pill-button m3-pill-button-secondary',
+            reactive: true,
+            track_hover: true,
+            x_expand: true,
+        });
+        settingsBtn.add_child(new St.Label({
+            text: '⚙ Settings',
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+        }));
+        settingsBtn.connect('button-release-event', () => {
             this._openPrefs();
+            this.menu.close();
         });
-        this.menu.addMenuItem(settingsItem);
+        actionBox.add_child(settingsBtn);
+
+        actionItem.add_child(actionBox);
+        this.menu.addMenuItem(actionItem);
     }
 
-    _rebuildMenu() {
-        this._buildMenu();
-    }
-
-    _addAccountSections(visibleAccounts) {
-        for (let i = 0; i < visibleAccounts.length; i++) {
-            if (i > 0) {
-                this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-            }
-
-            const account = visibleAccounts[i];
-            this._addSingleAccountSection(account, visibleAccounts);
-        }
-    }
-
-    _addSingleAccountSection(account, allVisible) {
+    _addSingleAccountSection(account) {
         const providerClass = getProvider(account.provider);
         const state = this._accountStates.get(account.id);
 
-        // Account header
-        const headerBox = new St.BoxLayout({vertical: false});
+        const item = new PopupMenu.PopupBaseMenuItem({reactive: false});
+        item.add_style_class_name('m3-account-card');
+        const outerBox = new St.BoxLayout({vertical: true, x_expand: true});
+
+        // Header row: name + provider pill + timestamp
+        const headerRow = new St.BoxLayout({
+            vertical: false,
+            x_expand: true,
+            spacing: 6,
+        });
 
         const nameLabel = new St.Label({
-            style_class: 'rate-limit-account-header',
+            style_class: 'm3-account-name',
             text: account.name,
-        });
-        headerBox.add_child(nameLabel);
-
-        // Provider tag
-        if (providerClass) {
-            const cssClass = `rate-limit-provider-tag rate-limit-provider-tag-${providerClass.cssClass}`;
-            const tagLabel = new St.Label({
-                style_class: cssClass,
-                text: providerClass.displayName,
-                y_align: Clutter.ActorAlign.CENTER,
-            });
-            headerBox.add_child(tagLabel);
-        }
-
-        // Stale indicator
-        if (state?.stale) {
-            const staleLabel = new St.Label({
-                style_class: 'rate-limit-stale',
-                text: '  (stale)',
-                y_align: Clutter.ActorAlign.CENTER,
-            });
-            headerBox.add_child(staleLabel);
-        }
-
-        const headerItem = new PopupMenu.PopupBaseMenuItem({reactive: false});
-        headerItem.add_child(headerBox);
-        this.menu.addMenuItem(headerItem);
-
-        // Error state
-        if (state?.error && !state?.result) {
-            const errorItem = new PopupMenu.PopupBaseMenuItem({reactive: false});
-            const errorLabel = new St.Label({
-                style_class: 'rate-limit-error',
-                text: `Error: ${state.error}`,
-            });
-            errorItem.add_child(errorLabel);
-            this.menu.addMenuItem(errorItem);
-            return;
-        }
-
-        // No data yet
-        if (!state || !state.result) {
-            const loadingItem = new PopupMenu.PopupBaseMenuItem({reactive: false});
-            loadingItem.add_child(new St.Label({text: 'Loading...'}));
-            this.menu.addMenuItem(loadingItem);
-            return;
-        }
-
-        // Usage windows
-        for (const window of state.result.windows) {
-            this._addWindowSection(window);
-        }
-
-        // Last updated
-        if (state.lastUpdated) {
-            const updatedItem = new PopupMenu.PopupBaseMenuItem({reactive: false});
-            const timeStr = this._formatTimeAgo(state.lastUpdated);
-            updatedItem.add_child(new St.Label({
-                style_class: 'rate-limit-status-line',
-                text: `Updated ${timeStr}`,
-            }));
-            this.menu.addMenuItem(updatedItem);
-        }
-
-        // Error message (for stale state)
-        if (state.error && state.stale) {
-            const warnItem = new PopupMenu.PopupBaseMenuItem({reactive: false});
-            warnItem.add_child(new St.Label({
-                style_class: 'rate-limit-error',
-                text: `Last error: ${state.error}`,
-            }));
-            this.menu.addMenuItem(warnItem);
-        }
-    }
-
-    _addWindowSection(window) {
-        const item = new PopupMenu.PopupBaseMenuItem({reactive: false});
-        const box = new St.BoxLayout({vertical: true});
-
-        // Header row: label + percentage
-        const headerRow = new St.BoxLayout({vertical: false});
-        const windowLabel = new St.Label({
-            style_class: 'rate-limit-window-label',
-            text: window.label,
             x_expand: true,
         });
-        headerRow.add_child(windowLabel);
+        headerRow.add_child(nameLabel);
 
-        const pct = Math.round(window.utilization * 100);
-        const valueText = window.used !== null && window.limit !== null
-            ? `${this._formatNumber(window.used)} / ${this._formatNumber(window.limit)} (${pct}%)`
-            : `${pct}%`;
-
-        const valueLabel = new St.Label({
-            style_class: 'rate-limit-window-value',
-            text: valueText,
-        });
-        headerRow.add_child(valueLabel);
-        box.add_child(headerRow);
-
-        // Progress bar
-        const barContainer = new St.Widget({
-            style_class: 'rate-limit-bar-container',
-        });
-        const barFill = new St.Widget({
-            style_class: `rate-limit-bar-fill ${this._getUsageColorClass(window.utilization)}`,
-        });
-        const fillWidth = Math.round(window.utilization * 280);
-        barFill.set_width(Math.max(0, Math.min(280, fillWidth)));
-        barContainer.add_child(barFill);
-        box.add_child(barContainer);
-
-        // Reset time
-        if (window.resetsAt) {
-            const resetText = `Resets in ${this._formatResetTime(window.resetsAt)}`;
-            const resetLabel = new St.Label({
-                style_class: 'rate-limit-reset-label',
-                text: resetText,
-            });
-            box.add_child(resetLabel);
+        if (providerClass) {
+            headerRow.add_child(new St.Label({
+                style_class: `m3-provider-pill m3-provider-pill-${providerClass.cssClass}`,
+                text: providerClass.displayName,
+                y_align: Clutter.ActorAlign.CENTER,
+            }));
         }
 
-        item.add_child(box);
+        if (state?.lastUpdated) {
+            const suffix = state.stale ? ' (stale)' : '';
+            headerRow.add_child(new St.Label({
+                style_class: 'm3-updated-label',
+                text: `${this._formatTimeAgo(state.lastUpdated)}${suffix}`,
+                y_align: Clutter.ActorAlign.CENTER,
+            }));
+        }
+
+        outerBox.add_child(headerRow);
+
+        if (state?.error && !state?.result) {
+            outerBox.add_child(new St.Label({
+                style_class: 'm3-error-label',
+                text: `Error: ${state.error}`,
+            }));
+        } else if (!state || !state.result) {
+            outerBox.add_child(new St.Label({
+                style_class: 'm3-loading-label',
+                text: 'Loading...',
+            }));
+        } else {
+            for (const window of state.result.windows)
+                outerBox.add_child(this._buildCompactWindowRow(window));
+            if (state.error && state.stale) {
+                outerBox.add_child(new St.Label({
+                    style_class: 'm3-warn-label',
+                    text: `Last error: ${state.error}`,
+                }));
+            }
+        }
+
+        item.add_child(outerBox);
         this.menu.addMenuItem(item);
+    }
+
+    _buildCompactWindowRow(window) {
+        const BAR_WIDTH = 150;
+        const BAR_HEIGHT = 6;
+
+        const row = new St.BoxLayout({
+            vertical: false,
+            x_expand: true,
+            spacing: 6,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
+        // Short label: "5h", "7d", "wk", etc.
+        const labelWidget = new St.Label({
+            style_class: 'm3-window-label',
+            text: this._getShortWindowLabel(window.label),
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        labelWidget.set_width(24);
+        row.add_child(labelWidget);
+
+        // Inline progress bar
+        const barContainer = new St.Widget({
+            style_class: 'm3-bar-container',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        barContainer.set_width(BAR_WIDTH);
+        barContainer.set_height(BAR_HEIGHT);
+        const barFill = new St.Widget({
+            style_class: `m3-bar-fill ${this._getUsageColorClass(window.utilization)}`,
+        });
+        barFill.set_width(Math.max(0, Math.min(BAR_WIDTH, Math.round(window.utilization * BAR_WIDTH))));
+        barFill.set_height(BAR_HEIGHT);
+        barContainer.add_child(barFill);
+        row.add_child(barContainer);
+
+        // Percentage
+        const pct = Math.round(window.utilization * 100);
+        const pctLabel = new St.Label({
+            style_class: 'm3-pct-label',
+            text: `${pct}%`,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        pctLabel.set_width(36);
+        row.add_child(pctLabel);
+
+        if (window.resetsAt) {
+            row.add_child(new St.Label({
+                style_class: 'm3-reset-label',
+                text: `↻${this._formatResetTime(window.resetsAt)}`,
+                x_expand: true,
+                x_align: Clutter.ActorAlign.END,
+                y_align: Clutter.ActorAlign.CENTER,
+            }));
+        } else {
+            row.add_child(new St.Widget({x_expand: true}));
+        }
+
+        return row;
     }
 
     // --- Formatting Helpers ---
@@ -503,11 +512,19 @@ class RateLimitIndicator extends PanelMenu.Button {
         return 'usage-low';
     }
 
+    _getShortWindowLabel(label) {
+        const lower = label.toLowerCase();
+        const match = label.match(/(\d+)/);
+        if (lower.includes('hour')) return match ? `${match[1]}h` : label.substring(0, 2);
+        if (lower.includes('day')) return match ? `${match[1]}d` : label.substring(0, 2);
+        if (lower.includes('week')) return 'wk';
+        if (lower.includes('primary')) return '1°';
+        return label.substring(0, 3);
+    }
+
     _formatResetTime(resetDate) {
         try {
-            const now = new Date();
-            const diffMs = resetDate.getTime() - now.getTime();
-
+            const diffMs = resetDate.getTime() - Date.now();
             if (diffMs <= 0) return 'now';
 
             const totalMinutes = Math.floor(diffMs / 60000);
@@ -515,19 +532,12 @@ class RateLimitIndicator extends PanelMenu.Button {
             const hours = Math.floor((totalMinutes % 1440) / 60);
             const minutes = totalMinutes % 60;
 
-            if (days > 0) return `${days}d ${hours}h`;
-            if (hours > 0) return `${hours}h ${minutes}m`;
+            if (days > 0) return `${days}d${hours}h`;
+            if (hours > 0) return `${hours}h${minutes}m`;
             return `${minutes}m`;
         } catch (e) {
             return '--';
         }
-    }
-
-    _formatNumber(n) {
-        if (n === null || n === undefined) return '--';
-        if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-        if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-        return n.toString();
     }
 
     _formatTimeAgo(date) {
