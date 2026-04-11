@@ -77,20 +77,12 @@ export class GlmProvider extends BaseProvider {
                         const statusCode = message.get_status();
 
                         if (statusCode === 401 || statusCode === 403) {
-                            reject(new Error(`Auth failed (HTTP ${statusCode}). Check your API key.`));
+                            reject(this._createHttpError(`Auth failed (HTTP ${statusCode}). Check your API key.`, message));
                             return;
                         }
 
                         if (statusCode === 429) {
-                            const err = new Error('Rate limited (HTTP 429)');
-                            err.statusCode = 429;
-                            const retryAfter = message.response_headers.get_one('Retry-After');
-                            if (retryAfter) {
-                                const secs = parseInt(retryAfter, 10);
-                                if (!isNaN(secs) && secs > 0)
-                                    err.retryAfter = secs;
-                            }
-                            reject(err);
+                            reject(this._createHttpError('Rate limited (HTTP 429)', message));
                             return;
                         }
 
@@ -150,7 +142,6 @@ export class GlmProvider extends BaseProvider {
             });
         }
 
-        // Sort: 5-hour first, weekly second, monthly last
         const order = {[WINDOW_FIVE_HOUR]: 0, [WINDOW_WEEKLY]: 1, [WINDOW_MONTHLY]: 2};
         windows.sort((a, b) => (order[a.id] ?? 99) - (order[b.id] ?? 99));
 

@@ -243,22 +243,12 @@ export class ClaudeProvider extends BaseProvider {
                         const statusCode = message.get_status();
 
                         if (statusCode === 401 || statusCode === 403) {
-                            const err = new Error(`Auth failed (HTTP ${statusCode})`);
-                            err.statusCode = statusCode;
-                            reject(err);
+                            reject(this._createHttpError(`Auth failed (HTTP ${statusCode})`, message));
                             return;
                         }
 
                         if (statusCode === 429) {
-                            const err = new Error('Rate limited (HTTP 429)');
-                            err.statusCode = 429;
-                            const retryAfter = message.response_headers.get_one('Retry-After');
-                            if (retryAfter) {
-                                const secs = parseInt(retryAfter, 10);
-                                if (!isNaN(secs) && secs > 0)
-                                    err.retryAfter = secs;
-                            }
-                            reject(err);
+                            reject(this._createHttpError('Rate limited (HTTP 429)', message));
                             return;
                         }
 

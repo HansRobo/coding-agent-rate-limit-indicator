@@ -26,6 +26,9 @@ export const DEFAULT_REFRESH_INTERVAL = 300; // seconds
 export const MIN_REFRESH_INTERVAL = 60;
 export const MAX_REFRESH_INTERVAL = 3600;
 export const HTTP_TIMEOUT = 30; // seconds
+export const DEFAULT_RETRY_AFTER_SECS = 60;
+export const DEFAULT_ERROR_BACKOFF_SECS = 30;
+export const SETTINGS_DEBOUNCE_MS = 2000;
 
 // --- Usage window IDs ---
 export const WINDOW_FIVE_HOUR = 'five_hour';

@@ -113,6 +113,27 @@ export class BaseProvider {
     }
 
     /**
+     * Create a decorated Error from an HTTP response.
+     * Sets statusCode on the error; for 429 also parses the Retry-After header.
+     * @param {string} message - Error message text
+     * @param {Soup.Message} soupMessage - The Soup.Message that produced the response
+     * @returns {Error}
+     */
+    _createHttpError(message, soupMessage) {
+        const err = new Error(message);
+        err.statusCode = soupMessage.get_status();
+        if (err.statusCode === 429) {
+            const retryAfter = soupMessage.response_headers.get_one('Retry-After');
+            if (retryAfter) {
+                const secs = parseInt(retryAfter, 10);
+                if (!isNaN(secs) && secs > 0)
+                    err.retryAfter = secs;
+            }
+        }
+        return err;
+    }
+
+    /**
      * Parse a reset timestamp that may be an ISO string, Unix seconds, or Unix milliseconds.
      * Returns a Date or null.
      */

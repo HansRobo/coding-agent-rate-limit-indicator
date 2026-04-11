@@ -24,6 +24,9 @@ import {
     THRESHOLD_MEDIUM,
     THRESHOLD_HIGH,
     PANEL_ICON_SIZE,
+    DEFAULT_RETRY_AFTER_SECS,
+    DEFAULT_ERROR_BACKOFF_SECS,
+    SETTINGS_DEBOUNCE_MS,
 } from './constants.js';
 
 import {IconCache} from './iconCache.js';
@@ -137,7 +140,7 @@ class RateLimitIndicator extends PanelMenu.Button {
         }
         this._debounceTimerId = GLib.timeout_add(
             GLib.PRIORITY_DEFAULT,
-            2000,
+            SETTINGS_DEBOUNCE_MS,
             () => {
                 this._debounceTimerId = null;
                 this._refresh();
@@ -248,7 +251,7 @@ class RateLimitIndicator extends PanelMenu.Button {
         const prevState = this._accountStates.get(account.id);
 
         // Skip if still within backoff window
-        if (prevState?.backoffUntil && prevState.backoffUntil > new Date())
+        if (prevState?.backoffUntil && prevState.backoffUntil > Date.now())
             return;
 
         const provider = createProviderInstance(account.provider);
@@ -277,8 +280,8 @@ class RateLimitIndicator extends PanelMenu.Button {
                 backoffUntil: null,
             });
         } catch (e) {
-            const backoffSecs = e.statusCode === 429 ? (e.retryAfter ?? 60) : 30;
-            const backoffUntil = new Date(Date.now() + backoffSecs * 1000);
+            const backoffSecs = e.statusCode === 429 ? (e.retryAfter ?? DEFAULT_RETRY_AFTER_SECS) : DEFAULT_ERROR_BACKOFF_SECS;
+            const backoffUntil = Date.now() + backoffSecs * 1000;
             this._accountStates.set(account.id, {
                 result: prevState?.result ?? null,
                 error: e.message,
