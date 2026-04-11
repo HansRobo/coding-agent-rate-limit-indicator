@@ -146,7 +146,7 @@ export class GlmProvider extends BaseProvider {
                 used: limit.currentValue ?? null,
                 limit: limit.usage ?? null,
                 utilization: (limit.percentage ?? 0) / 100,
-                resetsAt: limit.nextResetTime ? new Date(limit.nextResetTime) : null,
+                resetsAt: this._parseResetTimestamp(limit.nextResetTime),
             });
         }
 

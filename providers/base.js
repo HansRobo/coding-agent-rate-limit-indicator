@@ -113,6 +113,29 @@ export class BaseProvider {
     }
 
     /**
+     * Parse a reset timestamp that may be an ISO string, Unix seconds, or Unix milliseconds.
+     * Returns a Date or null.
+     */
+    _parseResetTimestamp(value) {
+        if (value == null) return null;
+
+        if (typeof value === 'string') {
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        if (typeof value === 'number') {
+            // Values below 1e12 are likely Unix seconds (not milliseconds).
+            // Current time in seconds is ~1.77e9, in milliseconds ~1.77e12.
+            const ms = value < 1e12 ? value * 1000 : value;
+            const d = new Date(ms);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        return null;
+    }
+
+    /**
      * Fetch usage data for the given account.
      *
      * @param {Object} account        - Account object {id, provider, name, config}

@@ -407,10 +407,9 @@ export class CodexProvider extends BaseProvider {
         }
         utilization = Math.max(0, Math.min(1, utilization));
 
-        // Parse reset time
-        const resetStr =
+        const resetValue =
             obj.resets_at ?? obj.reset_at ?? obj.resetAt ?? obj.reset ?? null;
-        const resetsAt = resetStr ? new Date(resetStr) : null;
+        const resetsAt = this._parseResetTimestamp(resetValue);
 
         return {
             id: windowId,
@@ -418,7 +417,7 @@ export class CodexProvider extends BaseProvider {
             used,
             limit,
             utilization,
-            resetsAt: resetsAt && !isNaN(resetsAt.getTime()) ? resetsAt : null,
+            resetsAt,
         };
     }
 

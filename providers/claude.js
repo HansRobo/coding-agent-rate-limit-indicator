@@ -297,9 +297,7 @@ export class ClaudeProvider extends BaseProvider {
                 used: null,
                 limit: null,
                 utilization: (data.five_hour.utilization ?? 0) / 100,
-                resetsAt: data.five_hour.resets_at
-                    ? new Date(data.five_hour.resets_at)
-                    : null,
+                resetsAt: this._parseResetTimestamp(data.five_hour.resets_at),
             });
         }
 
@@ -310,9 +308,7 @@ export class ClaudeProvider extends BaseProvider {
                 used: null,
                 limit: null,
                 utilization: (data.seven_day.utilization ?? 0) / 100,
-                resetsAt: data.seven_day.resets_at
-                    ? new Date(data.seven_day.resets_at)
-                    : null,
+                resetsAt: this._parseResetTimestamp(data.seven_day.resets_at),
             });
         }
 
