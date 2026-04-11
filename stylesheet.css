@@ -38,7 +38,7 @@
 .m3-account-card {
   padding: 6px 10px;
   border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: rgba(255, 255, 255, 0.10);
   margin: 1px 0;
 }
 
@@ -58,24 +58,24 @@
 }
 
 .m3-provider-pill-claude {
-  background-color: rgba(217, 119, 80, 0.25);
-  color: #e8a88a;
+  background-color: rgba(217, 119, 80, 0.40);
+  color: #f0bda6;
 }
 
 .m3-provider-pill-codex {
-  background-color: rgba(16, 163, 127, 0.25);
-  color: #6dd4b8;
+  background-color: rgba(16, 163, 127, 0.40);
+  color: #8ee4cc;
 }
 
 .m3-provider-pill-gemini {
-  background-color: rgba(66, 133, 244, 0.25);
-  color: #8ab4f8;
+  background-color: rgba(66, 133, 244, 0.40);
+  color: #adc8f8;
 }
 
 /* Updated/stale timestamp */
 .m3-updated-label {
   font-size: 10px;
-  color: rgba(240, 230, 220, 0.4);
+  color: rgba(240, 230, 220, 0.9);
   font-style: italic;
 }
 
@@ -83,12 +83,12 @@
 .m3-window-label {
   font-size: 10px;
   font-weight: 600;
-  color: rgba(240, 230, 220, 0.55);
+  color: #f0e6dc;
 }
 
 /* Inline progress bar */
 .m3-bar-container {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.18);
   border-radius: 3px;
 }
 
@@ -124,7 +124,7 @@
 /* Reset time */
 .m3-reset-label {
   font-size: 10px;
-  color: rgba(240, 230, 220, 0.38);
+  color: rgba(240, 230, 220, 0.9);
 }
 
 /* State labels */
@@ -136,20 +136,20 @@
 
 .m3-loading-label {
   font-size: 10px;
-  color: rgba(240, 230, 220, 0.45);
+  color: rgba(240, 230, 220, 0.85);
   font-style: italic;
   padding: 2px 0;
 }
 
 .m3-warn-label {
   font-size: 9px;
-  color: rgba(239, 83, 80, 0.65);
+  color: #ef5350;
   padding: 1px 0 0 0;
 }
 
 .m3-empty-label {
   font-size: 11px;
-  color: rgba(240, 230, 220, 0.5);
+  color: rgba(240, 230, 220, 0.9);
 }
 
 /* Bottom action row: pill buttons */
@@ -163,18 +163,18 @@
 }
 
 .m3-pill-button-secondary {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.18);
   color: #f0e6dc;
 }
 
 .m3-pill-button-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.14);
+  background-color: rgba(255, 255, 255, 0.28);
 }
 
 .m3-pill-button-secondary:active {
-  background-color: rgba(255, 255, 255, 0.22);
+  background-color: rgba(255, 255, 255, 0.35);
 }
 
 .m3-pill-button-secondary:focus {
-  background-color: rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.24);
 }
