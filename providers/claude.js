@@ -143,6 +143,19 @@ export class ClaudeProvider extends BaseProvider {
                             return;
                         }
 
+                        if (statusCode === 429) {
+                            const err = new Error('Rate limited (HTTP 429)');
+                            err.statusCode = 429;
+                            const retryAfter = message.response_headers.get_one('Retry-After');
+                            if (retryAfter) {
+                                const secs = parseInt(retryAfter, 10);
+                                if (!isNaN(secs) && secs > 0)
+                                    err.retryAfter = secs;
+                            }
+                            reject(err);
+                            return;
+                        }
+
                         if (statusCode !== 200) {
                             reject(new Error(`HTTP ${statusCode}`));
                             return;

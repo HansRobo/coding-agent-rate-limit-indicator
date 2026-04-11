@@ -58,6 +58,9 @@ class RateLimitIndicator extends PanelMenu.Button {
         // Refresh guard
         this._refreshInFlight = false;
 
+        // Debounce timer for settings-triggered refreshes
+        this._debounceTimerId = null;
+
         // Destroy guard for async safety
         this._destroyed = false;
 
@@ -125,6 +128,24 @@ class RateLimitIndicator extends PanelMenu.Button {
         return session;
     }
 
+    // Debounced refresh — cancels any pending scheduled refresh and schedules a new one.
+    // Used for settings changes to avoid a burst of requests when the user edits rapidly.
+    _scheduleRefresh() {
+        if (this._debounceTimerId !== null) {
+            GLib.source_remove(this._debounceTimerId);
+            this._debounceTimerId = null;
+        }
+        this._debounceTimerId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            2000,
+            () => {
+                this._debounceTimerId = null;
+                this._refresh();
+                return GLib.SOURCE_REMOVE;
+            }
+        );
+    }
+
     _recreateSession() {
         try {
             this._session.abort();
@@ -132,7 +153,7 @@ class RateLimitIndicator extends PanelMenu.Button {
             // ignore
         }
         this._session = this._createSession();
-        this._refresh();
+        this._scheduleRefresh();
     }
 
     // --- Timer ---
@@ -173,7 +194,7 @@ class RateLimitIndicator extends PanelMenu.Button {
             break;
         case 'accounts-json':
         case 'visible-account-ids':
-            this._refresh();
+            this._scheduleRefresh();
             this._prefetchIcons();
             break;
         case 'show-provider-icon':
@@ -224,6 +245,12 @@ class RateLimitIndicator extends PanelMenu.Button {
     }
 
     async _fetchAccount(account) {
+        const prevState = this._accountStates.get(account.id);
+
+        // Skip if still within backoff window
+        if (prevState?.backoffUntil && prevState.backoffUntil > new Date())
+            return;
+
         const provider = createProviderInstance(account.provider);
         if (!provider) {
             this._accountStates.set(account.id, {
@@ -231,6 +258,7 @@ class RateLimitIndicator extends PanelMenu.Button {
                 error: `Unknown provider: ${account.provider}`,
                 stale: false,
                 lastUpdated: null,
+                backoffUntil: null,
             });
             return;
         }
@@ -246,14 +274,17 @@ class RateLimitIndicator extends PanelMenu.Button {
                 error: null,
                 stale: false,
                 lastUpdated: new Date(),
+                backoffUntil: null,
             });
         } catch (e) {
-            const prevState = this._accountStates.get(account.id);
+            const backoffSecs = e.statusCode === 429 ? (e.retryAfter ?? 60) : 30;
+            const backoffUntil = new Date(Date.now() + backoffSecs * 1000);
             this._accountStates.set(account.id, {
                 result: prevState?.result ?? null,
                 error: e.message,
                 stale: prevState?.result !== null,
                 lastUpdated: prevState?.lastUpdated ?? null,
+                backoffUntil,
             });
         }
     }
@@ -672,6 +703,11 @@ class RateLimitIndicator extends PanelMenu.Button {
     destroy() {
         this._destroyed = true;
         this._stopTimer();
+
+        if (this._debounceTimerId !== null) {
+            GLib.source_remove(this._debounceTimerId);
+            this._debounceTimerId = null;
+        }
 
         this._iconCache?.destroy();
         this._iconCache = null;
