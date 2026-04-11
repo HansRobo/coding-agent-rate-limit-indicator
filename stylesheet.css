@@ -49,7 +49,7 @@
 .m3-account-card {
   padding: 6px 10px;
   border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.14);
+  background-color: rgba(128, 128, 128, 0.12);
   margin: 1px 0;
 }
 
@@ -57,7 +57,7 @@
 .m3-account-name {
   font-weight: bold;
   font-size: 12px;
-  color: #ffffff;
+  /* color inherits from GNOME Shell theme */
 }
 
 /* Provider pill badges */
@@ -70,36 +70,36 @@
 
 .m3-provider-pill-claude {
   background-color: rgba(217, 119, 80, 0.40);
-  color: #fdd0bc;
+  /* color inherits from theme */
 }
 
 .m3-provider-pill-codex {
   background-color: rgba(16, 163, 127, 0.40);
-  color: #b0f0de;
+  /* color inherits from theme */
 }
 
 .m3-provider-pill-gemini {
   background-color: rgba(66, 133, 244, 0.40);
-  color: #c4d8fc;
+  /* color inherits from theme */
 }
 
 /* Updated/stale timestamp */
 .m3-updated-label {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.7);
   font-style: italic;
+  opacity: 0.7;
 }
 
 /* Window row (inline: short-label + bar + pct + reset) */
 .m3-window-label {
   font-size: 10px;
   font-weight: 600;
-  color: #ffffff;
+  /* color inherits from GNOME Shell theme */
 }
 
 /* Inline progress bar */
 .m3-bar-container {
-  background-color: rgba(255, 255, 255, 0.22);
+  background-color: rgba(128, 128, 128, 0.22);
   border-radius: 3px;
 }
 
@@ -129,13 +129,13 @@
 .m3-pct-label {
   font-size: 11px;
   font-weight: 700;
-  color: #ffffff;
+  /* color inherits from GNOME Shell theme */
 }
 
 /* Reset time */
 .m3-reset-label {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.7);
+  opacity: 0.7;
 }
 
 /* State labels */
@@ -147,8 +147,8 @@
 
 .m3-loading-label {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.7);
   font-style: italic;
+  opacity: 0.7;
   padding: 2px 0;
 }
 
@@ -160,7 +160,7 @@
 
 .m3-empty-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  opacity: 0.7;
 }
 
 /* Bottom action row: pill buttons */
@@ -174,18 +174,18 @@
 }
 
 .m3-pill-button-secondary {
-  background-color: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  background-color: rgba(128, 128, 128, 0.18);
+  /* color inherits from GNOME Shell theme */
 }
 
 .m3-pill-button-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.28);
+  background-color: rgba(128, 128, 128, 0.28);
 }
 
 .m3-pill-button-secondary:active {
-  background-color: rgba(255, 255, 255, 0.35);
+  background-color: rgba(128, 128, 128, 0.35);
 }
 
 .m3-pill-button-secondary:focus {
-  background-color: rgba(255, 255, 255, 0.24);
+  background-color: rgba(128, 128, 128, 0.24);
 }
