@@ -14,6 +14,7 @@ export const CODEX_API_BASE = 'https://chatgpt.com';
 export const CODEX_USAGE_ENDPOINT = '/backend-api/wham/usage';
 export const CODEX_ME_ENDPOINT = '/backend-api/me';
 export const CODEX_REFERER = 'https://chatgpt.com/codex/settings/usage';
+export const CODEX_AUTH_TOKEN_ENDPOINT = 'https://auth.openai.com/oauth/token';
 
 // --- Defaults ---
 export const DEFAULT_REFRESH_INTERVAL = 300; // seconds
