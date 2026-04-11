@@ -49,7 +49,7 @@
 .m3-account-card {
   padding: 6px 10px;
   border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.10);
+  background-color: rgba(255, 255, 255, 0.14);
   margin: 1px 0;
 }
 
@@ -57,7 +57,7 @@
 .m3-account-name {
   font-weight: bold;
   font-size: 12px;
-  color: #f0e6dc;
+  color: #ffffff;
 }
 
 /* Provider pill badges */
@@ -70,23 +70,23 @@
 
 .m3-provider-pill-claude {
   background-color: rgba(217, 119, 80, 0.40);
-  color: #f0bda6;
+  color: #fdd0bc;
 }
 
 .m3-provider-pill-codex {
   background-color: rgba(16, 163, 127, 0.40);
-  color: #8ee4cc;
+  color: #b0f0de;
 }
 
 .m3-provider-pill-gemini {
   background-color: rgba(66, 133, 244, 0.40);
-  color: #adc8f8;
+  color: #c4d8fc;
 }
 
 /* Updated/stale timestamp */
 .m3-updated-label {
   font-size: 10px;
-  color: rgba(240, 230, 220, 0.9);
+  color: rgba(255, 255, 255, 0.7);
   font-style: italic;
 }
 
@@ -94,12 +94,12 @@
 .m3-window-label {
   font-size: 10px;
   font-weight: 600;
-  color: #f0e6dc;
+  color: #ffffff;
 }
 
 /* Inline progress bar */
 .m3-bar-container {
-  background-color: rgba(255, 255, 255, 0.18);
+  background-color: rgba(255, 255, 255, 0.22);
   border-radius: 3px;
 }
 
@@ -129,13 +129,13 @@
 .m3-pct-label {
   font-size: 11px;
   font-weight: 700;
-  color: #f0e6dc;
+  color: #ffffff;
 }
 
 /* Reset time */
 .m3-reset-label {
   font-size: 10px;
-  color: rgba(240, 230, 220, 0.9);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* State labels */
@@ -147,7 +147,7 @@
 
 .m3-loading-label {
   font-size: 10px;
-  color: rgba(240, 230, 220, 0.85);
+  color: rgba(255, 255, 255, 0.7);
   font-style: italic;
   padding: 2px 0;
 }
@@ -160,7 +160,7 @@
 
 .m3-empty-label {
   font-size: 11px;
-  color: rgba(240, 230, 220, 0.9);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* Bottom action row: pill buttons */
@@ -175,7 +175,7 @@
 
 .m3-pill-button-secondary {
   background-color: rgba(255, 255, 255, 0.18);
-  color: #f0e6dc;
+  color: #ffffff;
 }
 
 .m3-pill-button-secondary:hover {
