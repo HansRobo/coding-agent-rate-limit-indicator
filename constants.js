@@ -8,7 +8,8 @@ export const PROVIDER_GLM = 'glm';
 // --- Claude (Anthropic) ---
 export const CLAUDE_API_URL = 'https://api.anthropic.com/api/oauth/usage';
 export const CLAUDE_BETA_HEADER = 'oauth-2025-04-20';
-
+export const CLAUDE_TOKEN_ENDPOINT = 'https://api.anthropic.com/v1/oauth/token';
+export const CLAUDE_CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e';
 
 // --- GLM (z.ai) ---
 export const GLM_API_URL = 'https://api.z.ai/api/monitor/usage/quota/limit';
