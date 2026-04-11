@@ -37,11 +37,28 @@ export class BaseProvider {
     }
 
     /**
-     * Short label for the top bar (e.g. 'CC', 'CX').
+     * Short text fallback label for the top bar when icon is unavailable (e.g. 'CC', 'CX').
+     * Default derives 2 uppercase initials from displayName words.
+     * Override in subclasses for a custom fallback.
      * @returns {string}
      */
-    static get shortName() {
-        throw new Error('Provider must define static shortName');
+    static get shortLabel() {
+        return this.displayName
+            .split(/\s+/)
+            .filter(w => w.length > 0)
+            .map(w => w[0])
+            .join('')
+            .toUpperCase()
+            .substring(0, 2) || '??';
+    }
+
+    /**
+     * Return the URL to fetch this provider's icon SVG.
+     * @param {string} style - 'monochrome' or 'color'
+     * @returns {string} URL
+     */
+    static getIconUrl(_style) {
+        throw new Error(`Provider ${this.id} must implement static getIconUrl(style)`);
     }
 
     /**

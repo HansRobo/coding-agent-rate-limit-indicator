@@ -23,8 +23,10 @@ export class ClaudeProvider extends BaseProvider {
         return 'Claude Code';
     }
 
-    static get shortName() {
-        return 'CC';
+    static getIconUrl(style) {
+        return style === 'color'
+            ? 'https://cdn.simpleicons.org/claude'
+            : 'https://cdn.simpleicons.org/claude/ffffff';
     }
 
     static get supportsAutoDetect() {

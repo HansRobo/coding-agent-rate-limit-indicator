@@ -21,6 +21,7 @@ A GNOME Shell extension that monitors rate limit usage for multiple coding agent
 
 - `extension.js` — Panel indicator, popup menu, refresh orchestration
 - `prefs.js` — Preferences UI (libadwaita)
+- `iconCache.js` — Fetches and caches provider SVG icons from provider-defined URLs
 - `providers/base.js` — Base provider interface
 - `providers/claude.js` — Anthropic OAuth API provider
 - `providers/codex.js` — ChatGPT internal API provider
@@ -63,7 +64,8 @@ glib-compile-schemas schemas/
 ## Adding a New Provider
 
 1. Create `providers/<name>.js` extending `BaseProvider`
-2. Implement static properties: `id`, `displayName`, `shortName`
-3. Implement `fetchUsage(account, session, getToken)` → `UsageResult`
-4. Register in `providerRegistry.js`: `registerProvider(NewProvider)`
-5. Add constants to `constants.js` if needed
+2. Implement static properties: `id`, `displayName`
+3. Implement `static getIconUrl(style)` → URL string for 'monochrome' and 'color' styles. Icons are fetched at runtime and cached in `~/.cache/coding-agent-rate-limit-indicator/icons/`. Optionally override `static get shortLabel()` for a 2-char text fallback (default: initials of displayName).
+4. Implement `fetchUsage(account, session, getToken)` → `UsageResult`
+5. Register in `providerRegistry.js`: `registerProvider(NewProvider)`
+6. Add constants to `constants.js` if needed

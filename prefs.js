@@ -411,7 +411,7 @@ export default class RateLimitPreferences extends ExtensionPreferences {
         for (const provider of providers) {
             const row = new Adw.ActionRow({
                 title: provider.displayName,
-                subtitle: `Short name: ${provider.shortName} | Auth: ${
+                subtitle: `Auth: ${
                     provider.requiresManualToken ? 'Manual token' : 'Auto-detect'
                 }`,
             });

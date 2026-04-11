@@ -167,7 +167,7 @@ export function setAccountVisibility(settings, accountId, visible) {
  */
 export function getAccountDisplayLabel(account, allVisibleAccounts, providerRegistry) {
     const provider = providerRegistry.get(account.provider);
-    const shortName = provider ? provider.shortName : account.provider.toUpperCase();
+    const shortName = provider ? provider.shortLabel : account.provider.toUpperCase();
 
     // Check if there are multiple accounts for this provider
     const sameProviderAccounts = allVisibleAccounts.filter(

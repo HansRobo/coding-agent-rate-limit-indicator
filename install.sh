@@ -22,6 +22,7 @@ cp "$SOURCE_DIR/constants.js"        "$INSTALL_DIR/"
 cp "$SOURCE_DIR/accounts.js"         "$INSTALL_DIR/"
 cp "$SOURCE_DIR/secret.js"           "$INSTALL_DIR/"
 cp "$SOURCE_DIR/providerRegistry.js" "$INSTALL_DIR/"
+cp "$SOURCE_DIR/iconCache.js"        "$INSTALL_DIR/"
 cp "$SOURCE_DIR/stylesheet.css"      "$INSTALL_DIR/"
 cp "$SOURCE_DIR/providers/"*.js      "$INSTALL_DIR/providers/"
 

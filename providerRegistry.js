@@ -35,13 +35,13 @@ export function getAllProviders() {
 
 /**
  * Get provider metadata for UI display.
- * @returns {Array<{id: string, displayName: string, shortName: string, cssClass: string}>}
+ * @returns {Array<{id: string, displayName: string, shortLabel: string, cssClass: string}>}
  */
 export function getProviderList() {
     return getAllProviders().map(p => ({
         id: p.id,
         displayName: p.displayName,
-        shortName: p.shortName,
+        shortLabel: p.shortLabel,
         cssClass: p.cssClass,
         supportsAutoDetect: p.supportsAutoDetect,
         requiresManualToken: p.requiresManualToken,

@@ -6,7 +6,18 @@
 }
 
 .panel-rate-limit-box {
-  spacing: 6px;
+  spacing: 4px;
+}
+
+/* Per-account segment: icon/label + status text */
+.panel-account-segment {
+  spacing: 3px;
+}
+
+/* Provider icon in panel top bar */
+.panel-provider-icon {
+  icon-size: 16px;
+  margin: 0 1px;
 }
 
 .panel-rate-limit-label {

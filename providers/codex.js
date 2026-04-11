@@ -24,8 +24,14 @@ export class CodexProvider extends BaseProvider {
         return 'Codex';
     }
 
-    static get shortName() {
+    static get shortLabel() {
         return 'CX';
+    }
+
+    static getIconUrl(_style) {
+        // cdn.simpleicons.org does not carry the OpenAI icon; use jsDelivr instead.
+        // Color injection for monochrome is handled by IconCache._injectSvgColor().
+        return 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg';
     }
 
     static get supportsAutoDetect() {

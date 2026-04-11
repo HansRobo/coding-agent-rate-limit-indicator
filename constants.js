@@ -37,6 +37,9 @@ export const THRESHOLD_LOW = 0.4;
 export const THRESHOLD_MEDIUM = 0.7;
 export const THRESHOLD_HIGH = 0.9;
 
+// --- Icons ---
+export const PANEL_ICON_SIZE = 16;
+
 // --- Schema ID ---
 export const SCHEMA_ID = 'org.gnome.shell.extensions.coding-agent-rate-limit-indicator';
 
