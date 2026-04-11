@@ -24,6 +24,9 @@ import {
     THRESHOLD_MEDIUM,
     THRESHOLD_HIGH,
     PANEL_ICON_SIZE,
+    PANEL_VBAR_HEIGHT,
+    MENU_BAR_WIDTH,
+    MENU_BAR_HEIGHT,
     DEFAULT_RETRY_AFTER_SECS,
     DEFAULT_ERROR_BACKOFF_SECS,
     SETTINGS_DEBOUNCE_MS,
@@ -83,16 +86,12 @@ class RateLimitIndicator extends PanelMenu.Button {
         });
         this.add_child(this._panelBox);
 
-        // Panel mini bar container (always kept as a persistent child)
-        this._panelBarContainer = new St.Widget({
-            style_class: 'panel-mini-bar-container',
+        // Panel vertical bars group (always kept as a persistent child; bars rebuilt per account)
+        this._panelBarsGroup = new St.BoxLayout({
+            style_class: 'panel-bars-group',
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._panelBarFill = new St.Widget({
-            style_class: 'panel-mini-bar-fill',
-        });
-        this._panelBarContainer.add_child(this._panelBarFill);
-        this._panelBox.add_child(this._panelBarContainer);
+        this._panelBox.add_child(this._panelBarsGroup);
 
         // Apply initial display mode
         this._updateDisplayMode();
@@ -214,7 +213,7 @@ class RateLimitIndicator extends PanelMenu.Button {
         const mode = this._settings.get_string('display-mode');
         // Account segments (text/icon) are managed by _updatePanelDisplay();
         // only the bar visibility needs to be set here.
-        this._panelBarContainer.visible = (mode === DISPLAY_MODE_BAR || mode === DISPLAY_MODE_BOTH);
+        this._panelBarsGroup.visible = (mode === DISPLAY_MODE_BAR || mode === DISPLAY_MODE_BOTH);
     }
 
     // --- Data Fetching ---
@@ -319,16 +318,19 @@ class RateLimitIndicator extends PanelMenu.Button {
         const iconStyle = this._settings.get_string('icon-style');
         const visibleAccounts = getVisibleAccounts(this._settings);
         const showContent = (mode === DISPLAY_MODE_TEXT || mode === DISPLAY_MODE_BOTH);
+        const showBars = (mode === DISPLAY_MODE_BAR || mode === DISPLAY_MODE_BOTH);
 
-        // Remove existing dynamic account segments (all children except the bar container)
+        // Remove existing dynamic account segments (all children except the bars group)
         const toRemove = [];
         for (let i = 0; i < this._panelBox.get_n_children(); i++) {
             const child = this._panelBox.get_child_at_index(i);
-            if (child !== this._panelBarContainer)
+            if (child !== this._panelBarsGroup)
                 toRemove.push(child);
         }
         for (const child of toRemove)
             this._panelBox.remove_child(child);
+
+        this._panelBarsGroup.remove_all_children();
 
         if (visibleAccounts.length === 0) {
             if (showContent) {
@@ -341,49 +343,47 @@ class RateLimitIndicator extends PanelMenu.Button {
                     0
                 );
             }
-            this._setPanelBarFraction(0);
             return;
         }
 
-        let primaryUtilization = 0;
-        let accountCount = 0;
         let insertIdx = 0;
 
         for (let i = 0; i < visibleAccounts.length; i++) {
             const account = visibleAccounts[i];
             const state = this._accountStates.get(account.id);
             const providerClass = getProvider(account.provider);
+            const primaryWindow = state?.result?.windows?.[0] ?? null;
 
-            // Build status text
-            let statusText;
-            if (!state || !state.result || state.result.windows.length === 0) {
-                statusText = state?.error ? 'Err' : '--';
-            } else {
-                const primaryWindow = state.result.windows[0];
-                const pct = Math.round(primaryWindow.utilization * 100);
-                primaryUtilization += primaryWindow.utilization;
-                accountCount++;
-
-                // Disambiguate when multiple accounts share the same provider
-                const sameProvider = visibleAccounts.filter(
-                    a => a.provider === account.provider
-                );
-                if (sameProvider.length > 1) {
-                    const name = account.name?.trim() || '??';
-                    const initials = name
-                        .split(/\s+/)
-                        .filter(w => w.length > 0)
-                        .map(w => w[0])
-                        .join('')
-                        .toUpperCase()
-                        .substring(0, 2) || '??';
-                    statusText = `(${initials}): ${pct}%`;
-                } else {
-                    statusText = `: ${pct}%`;
-                }
-            }
+            if (showBars)
+                this._addVerticalBar(primaryWindow?.utilization ?? 0);
 
             if (showContent) {
+                // Build status text
+                let statusText;
+                if (!primaryWindow) {
+                    statusText = state?.error ? 'Err' : '--';
+                } else {
+                    const pct = Math.round(primaryWindow.utilization * 100);
+
+                    // Disambiguate when multiple accounts share the same provider
+                    const sameProvider = visibleAccounts.filter(
+                        a => a.provider === account.provider
+                    );
+                    if (sameProvider.length > 1) {
+                        const name = account.name?.trim() || '??';
+                        const initials = name
+                            .split(/\s+/)
+                            .filter(w => w.length > 0)
+                            .map(w => w[0])
+                            .join('')
+                            .toUpperCase()
+                            .substring(0, 2) || '??';
+                        statusText = `(${initials}): ${pct}%`;
+                    } else {
+                        statusText = `: ${pct}%`;
+                    }
+                }
+
                 // Add separator before second+ accounts
                 if (i > 0) {
                     this._panelBox.insert_child_at_index(
@@ -443,18 +443,25 @@ class RateLimitIndicator extends PanelMenu.Button {
                 this._panelBox.insert_child_at_index(segment, insertIdx++);
             }
         }
-
-        // Mini bar shows average utilization across all accounts
-        const avgUtilization = accountCount > 0
-            ? primaryUtilization / accountCount
-            : 0;
-        this._setPanelBarFraction(avgUtilization);
     }
 
-    _setPanelBarFraction(fraction) {
-        const clampedFraction = Math.max(0, Math.min(1, fraction));
-        const widthPx = Math.round(clampedFraction * 50);
-        this._panelBarFill.set_width(widthPx);
+    _addVerticalBar(utilization) {
+        const clampedFraction = Math.max(0, Math.min(1, utilization));
+        const fillHeight = Math.round(clampedFraction * PANEL_VBAR_HEIGHT);
+
+        const container = new St.Widget({
+            style_class: 'panel-vbar-container',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
+        const fill = new St.Widget({
+            style_class: `panel-vbar-fill ${this._getUsageColorClass(utilization)}`,
+        });
+        fill.set_height(fillHeight);
+        fill.set_position(0, PANEL_VBAR_HEIGHT - fillHeight);
+
+        container.add_child(fill);
+        this._panelBarsGroup.add_child(container);
     }
 
     // --- Popup Menu ---
@@ -593,8 +600,8 @@ class RateLimitIndicator extends PanelMenu.Button {
     }
 
     _buildCompactWindowRow(window) {
-        const BAR_WIDTH = 150;
-        const BAR_HEIGHT = 6;
+        const BAR_WIDTH = MENU_BAR_WIDTH;
+        const BAR_HEIGHT = MENU_BAR_HEIGHT;
 
         const row = new St.BoxLayout({
             vertical: false,

@@ -50,6 +50,11 @@ export const THRESHOLD_HIGH = 0.9;
 // --- Icons ---
 export const PANEL_ICON_SIZE = 16;
 
+// --- UI dimensions ---
+export const PANEL_VBAR_HEIGHT = 20;
+export const MENU_BAR_WIDTH = 150;
+export const MENU_BAR_HEIGHT = 6;
+
 // --- Schema ID ---
 export const SCHEMA_ID = 'org.gnome.shell.extensions.coding-agent-rate-limit-indicator';
 
