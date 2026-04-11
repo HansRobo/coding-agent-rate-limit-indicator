@@ -1,0 +1,7 @@
+*.zip
+*.compiled
+schemas/gschemas.compiled
+dist/
+node_modules/
+.idea/
+.vscode/

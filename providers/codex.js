@@ -1,0 +1,253 @@
+// Codex / OpenAI (ChatGPT) provider.
+// Fetches usage data from the ChatGPT internal API.
+
+import GLib from 'gi://GLib';
+import Soup from 'gi://Soup?version=3.0';
+
+import {BaseProvider} from './base.js';
+import {
+    PROVIDER_CODEX,
+    CODEX_API_BASE,
+    CODEX_USAGE_ENDPOINT,
+    CODEX_REFERER,
+    WINDOW_PRIMARY,
+    WINDOW_WEEKLY,
+} from '../constants.js';
+
+export class CodexProvider extends BaseProvider {
+    static get id() {
+        return PROVIDER_CODEX;
+    }
+
+    static get displayName() {
+        return 'Codex';
+    }
+
+    static get shortName() {
+        return 'CX';
+    }
+
+    static get supportsAutoDetect() {
+        return false;
+    }
+
+    static get requiresManualToken() {
+        return true;
+    }
+
+    static getDefaultConfig() {
+        return {};
+    }
+
+    static getConfigFields() {
+        return [];
+    }
+
+    async fetchUsage(account, session, getToken) {
+        const token = await getToken(account.id);
+        if (!token) {
+            throw new Error('No bearer token configured. Set it in Settings.');
+        }
+
+        // Normalize token (strip "Bearer " prefix if present)
+        const normalizedToken = token.trim().replace(/^Bearer\s+/i, '').trim();
+
+        return new Promise((resolve, reject) => {
+            const url = `${CODEX_API_BASE}${CODEX_USAGE_ENDPOINT}`;
+            const message = Soup.Message.new('GET', url);
+            const path = CODEX_USAGE_ENDPOINT;
+
+            message.request_headers.append('Accept', 'application/json');
+            message.request_headers.append(
+                'Authorization',
+                `Bearer ${normalizedToken}`
+            );
+            message.request_headers.append('Referer', CODEX_REFERER);
+            message.request_headers.append('oai-language', 'en-US');
+            message.request_headers.append('x-openai-target-path', path);
+            message.request_headers.append('x-openai-target-route', path);
+
+            session.send_and_read_async(
+                message,
+                GLib.PRIORITY_DEFAULT,
+                null,
+                (sess, result) => {
+                    try {
+                        const bytes = sess.send_and_read_finish(result);
+                        const statusCode = message.get_status();
+
+                        if (statusCode === 401 || statusCode === 403) {
+                            reject(new Error(`Auth failed (HTTP ${statusCode}). Token may be expired.`));
+                            return;
+                        }
+
+                        if (statusCode !== 200) {
+                            reject(new Error(`HTTP ${statusCode}`));
+                            return;
+                        }
+
+                        const decoder = new TextDecoder('utf-8');
+                        const data = JSON.parse(decoder.decode(bytes.get_data()));
+                        resolve(this._normalizeResponse(data));
+                    } catch (e) {
+                        reject(new Error(`Failed to fetch usage: ${e.message}`));
+                    }
+                }
+            );
+        });
+    }
+
+    /**
+     * Normalize the ChatGPT usage API response.
+     *
+     * The response structure varies, but commonly contains:
+     * {
+     *   rate_limit: {
+     *     ...
+     *     windows or nested objects with:
+     *       total_tokens_used, total_tokens_limit, resets_at, used_percent, ...
+     *   }
+     * }
+     *
+     * This parser walks the response tree to find rate limit windows.
+     */
+    _normalizeResponse(data) {
+        const windows = [];
+
+        // Try to find rate_limit data from multiple possible response shapes
+        const rateLimit = this._findDeep(data, 'rate_limit') ?? data;
+
+        // Attempt to extract primary (5-hour) window
+        const primary = this._extractWindow(
+            rateLimit,
+            ['primary_window', 'primary', 'five_hour', '5h'],
+            WINDOW_PRIMARY,
+            '5-Hour'
+        );
+        if (primary) windows.push(primary);
+
+        // Attempt to extract secondary (weekly) window
+        const weekly = this._extractWindow(
+            rateLimit,
+            ['secondary_window', 'secondary', 'weekly', 'seven_day', '7d'],
+            WINDOW_WEEKLY,
+            'Weekly'
+        );
+        if (weekly) windows.push(weekly);
+
+        // If no structured windows found, try flat keys at top level
+        if (windows.length === 0) {
+            const flat = this._extractFlatWindow(rateLimit);
+            if (flat) windows.push(flat);
+        }
+
+        // Try to extract plan name
+        const planName =
+            this._findDeep(data, 'plan_type') ??
+            this._findDeep(data, 'tier') ??
+            this._findDeep(data, 'type') ??
+            null;
+
+        return {
+            windows,
+            planName: typeof planName === 'string' ? planName : null,
+        };
+    }
+
+    /**
+     * Extract a usage window from an object, trying multiple key names.
+     */
+    _extractWindow(obj, candidateKeys, windowId, label) {
+        if (!obj || typeof obj !== 'object') return null;
+
+        let windowData = null;
+        for (const key of candidateKeys) {
+            if (obj[key] && typeof obj[key] === 'object') {
+                windowData = obj[key];
+                break;
+            }
+        }
+        if (!windowData) return null;
+
+        return this._parseWindowObject(windowData, windowId, label);
+    }
+
+    /**
+     * Parse a window object with various possible key names for used/limit/percent/reset.
+     */
+    _parseWindowObject(obj, windowId, label) {
+        const used = this._findFirstNumeric(obj, [
+            'total_tokens_used', 'used_tokens', 'tokens_used', 'used',
+        ]);
+        const limit = this._findFirstNumeric(obj, [
+            'total_tokens_limit', 'token_limit', 'limit', 'quota', 'max',
+        ]);
+        let percent = this._findFirstNumeric(obj, [
+            'used_percent', 'percent', 'percentage', 'utilization',
+        ]);
+
+        // Compute utilization
+        let utilization = 0;
+        if (percent !== null) {
+            // Auto-detect 0-1 vs 0-100 scale
+            utilization = percent > 1 ? percent / 100 : percent;
+        } else if (used !== null && limit !== null && limit > 0) {
+            utilization = used / limit;
+        }
+        utilization = Math.max(0, Math.min(1, utilization));
+
+        // Parse reset time
+        const resetStr =
+            obj.resets_at ?? obj.reset_at ?? obj.resetAt ?? obj.reset ?? null;
+        const resetsAt = resetStr ? new Date(resetStr) : null;
+
+        return {
+            id: windowId,
+            label,
+            used,
+            limit,
+            utilization,
+            resetsAt: resetsAt && !isNaN(resetsAt.getTime()) ? resetsAt : null,
+        };
+    }
+
+    /**
+     * Try to parse a flat response as a single usage window.
+     */
+    _extractFlatWindow(obj) {
+        if (!obj || typeof obj !== 'object') return null;
+        const parsed = this._parseWindowObject(obj, WINDOW_PRIMARY, 'Usage');
+        // Only return if we found meaningful data
+        if (parsed.used !== null || parsed.limit !== null || parsed.utilization > 0) {
+            return parsed;
+        }
+        return null;
+    }
+
+    /**
+     * Find the first numeric value in obj matching one of the candidate keys.
+     */
+    _findFirstNumeric(obj, keys) {
+        for (const key of keys) {
+            if (key in obj && typeof obj[key] === 'number') {
+                return obj[key];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Recursively search for a key in a nested object/array.
+     */
+    _findDeep(obj, targetKey) {
+        if (!obj || typeof obj !== 'object') return null;
+        if (targetKey in obj) return obj[targetKey];
+
+        const values = Array.isArray(obj) ? obj : Object.values(obj);
+        for (const val of values) {
+            const found = this._findDeep(val, targetKey);
+            if (found !== null && found !== undefined) return found;
+        }
+        return null;
+    }
+}

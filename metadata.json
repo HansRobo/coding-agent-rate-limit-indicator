@@ -1,0 +1,9 @@
+{
+  "uuid": "coding-agent-rate-limit-indicator@github.com",
+  "name": "Coding Agent Rate Limit Indicator",
+  "description": "Monitor rate limit usage for multiple coding agents (Claude Code, Codex, Gemini CLI, etc.) in the GNOME top bar. Supports multiple providers and accounts.",
+  "version": 1,
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "settings-schema": "org.gnome.shell.extensions.coding-agent-rate-limit-indicator",
+  "url": "https://github.com/hans/coding-agent-rate-limit-indicator"
+}

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="coding-agent-rate-limit-indicator">
+  <schema id="org.gnome.shell.extensions.coding-agent-rate-limit-indicator"
+          path="/org/gnome/shell/extensions/coding-agent-rate-limit-indicator/">
+
+    <!-- Refresh interval in seconds -->
+    <key name="refresh-interval" type="i">
+      <default>300</default>
+      <summary>Refresh interval</summary>
+      <description>How often to fetch usage data, in seconds (60-3600).</description>
+    </key>
+
+    <!-- Display mode: text, bar, or both -->
+    <key name="display-mode" type="s">
+      <default>'text'</default>
+      <summary>Panel display mode</summary>
+      <description>How to display usage in the panel: text, bar, or both.</description>
+    </key>
+
+    <!-- Whether to show provider icons in the panel -->
+    <key name="show-provider-icon" type="b">
+      <default>true</default>
+      <summary>Show provider icons</summary>
+      <description>Whether to show provider icons in the top bar.</description>
+    </key>
+
+    <!-- Icon style: color or monochrome -->
+    <key name="icon-style" type="s">
+      <default>'monochrome'</default>
+      <summary>Icon style</summary>
+      <description>Icon rendering style: color or monochrome.</description>
+    </key>
+
+    <!-- JSON-encoded array of account objects -->
+    <key name="accounts-json" type="s">
+      <default>'[]'</default>
+      <summary>Accounts configuration</summary>
+      <description>JSON array of account objects: [{id, provider, name, config}].</description>
+    </key>
+
+    <!-- IDs of accounts visible in the panel -->
+    <key name="visible-account-ids" type="as">
+      <default>[]</default>
+      <summary>Visible account IDs</summary>
+      <description>List of account IDs to display in the panel and menu.</description>
+    </key>
+
+    <!-- HTTP proxy URL (empty = no proxy) -->
+    <key name="proxy-url" type="s">
+      <default>''</default>
+      <summary>HTTP proxy URL</summary>
+      <description>Optional HTTP proxy URL for API requests. Leave empty for direct connection.</description>
+    </key>
+
+  </schema>
+</schemalist>

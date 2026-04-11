@@ -1,0 +1,138 @@
+/* Coding Agent Rate Limit Indicator - Stylesheet */
+
+/* === Panel indicator === */
+.panel-rate-limit-indicator {
+  /* inherits system panel button style */
+}
+
+.panel-rate-limit-box {
+  spacing: 6px;
+}
+
+.panel-rate-limit-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Panel mini progress bar (in top bar) */
+.panel-mini-bar-container {
+  width: 50px;
+  height: 10px;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+}
+
+.panel-mini-bar-fill {
+  height: 10px;
+  border-radius: 5px;
+  background-color: #ffffff;
+  transition-duration: 300ms;
+}
+
+/* === Popup menu === */
+.rate-limit-menu {
+  min-width: 320px;
+}
+
+/* Account section header */
+.rate-limit-account-header {
+  font-weight: bold;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.rate-limit-provider-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 8px;
+}
+
+.rate-limit-provider-tag-claude {
+  background-color: rgba(217, 119, 80, 0.3);
+  color: #d97750;
+}
+
+.rate-limit-provider-tag-codex {
+  background-color: rgba(16, 163, 127, 0.3);
+  color: #10a37f;
+}
+
+.rate-limit-provider-tag-gemini {
+  background-color: rgba(66, 133, 244, 0.3);
+  color: #4285f4;
+}
+
+/* Usage window section */
+.rate-limit-window-label {
+  font-size: 12px;
+  color: #aaaaaa;
+  padding: 2px 0;
+}
+
+.rate-limit-window-value {
+  font-size: 12px;
+  padding: 0 0 2px 0;
+}
+
+.rate-limit-reset-label {
+  font-size: 11px;
+  color: #888888;
+  padding: 0 0 4px 0;
+}
+
+/* Progress bar in popup menu */
+.rate-limit-bar-container {
+  width: 280px;
+  height: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+.rate-limit-bar-fill {
+  height: 8px;
+  border-radius: 4px;
+  transition-duration: 300ms;
+}
+
+/* Usage level colors */
+.usage-low {
+  background-color: #22c55e;
+}
+
+.usage-medium {
+  background-color: #eab308;
+}
+
+.usage-high {
+  background-color: #f97316;
+}
+
+.usage-critical {
+  background-color: #ef4444;
+}
+
+/* Stale data indicator */
+.rate-limit-stale {
+  font-style: italic;
+  color: #888888;
+}
+
+/* Error state */
+.rate-limit-error {
+  color: #ef4444;
+}
+
+/* Status line at top of menu */
+.rate-limit-status-line {
+  font-size: 11px;
+  color: #888888;
+  padding: 2px 0 4px 0;
+}
+
+/* Action items in the menu */
+.rate-limit-action-item {
+  font-size: 12px;
+}
