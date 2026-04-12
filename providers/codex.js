@@ -393,15 +393,19 @@ export class CodexProvider extends BaseProvider {
         const limit = this._findFirstNumeric(obj, [
             'total_tokens_limit', 'token_limit', 'limit', 'quota', 'max',
         ]);
-        let percent = this._findFirstNumeric(obj, [
-            'used_percent', 'percent', 'percentage', 'utilization',
+        // 'used_percent', 'percent', 'percentage' are always 0-100 scale.
+        // 'utilization' is 0-1 scale by convention.
+        const percent100 = this._findFirstNumeric(obj, [
+            'used_percent', 'percent', 'percentage',
         ]);
+        const utilizationFraction = (typeof obj['utilization'] === 'number') ? obj['utilization'] : null;
 
         // Compute utilization
         let utilization = 0;
-        if (percent !== null) {
-            // Auto-detect 0-1 vs 0-100 scale
-            utilization = percent > 1 ? percent / 100 : percent;
+        if (utilizationFraction !== null) {
+            utilization = utilizationFraction;
+        } else if (percent100 !== null) {
+            utilization = percent100 / 100;
         } else if (used !== null && limit !== null && limit > 0) {
             utilization = used / limit;
         }
