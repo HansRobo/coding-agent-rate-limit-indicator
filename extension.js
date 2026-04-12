@@ -99,6 +99,13 @@ class RateLimitIndicator extends PanelMenu.Button {
         // --- Build popup menu ---
         this._buildMenu();
 
+        // --- Track system color scheme for menu text color ---
+        this._stSettings = St.Settings.get();
+        this._colorSchemeHandlerId = this._stSettings.connect(
+            'notify::color-scheme',
+            () => this._applyMenuThemeClass()
+        );
+
         // --- Connect settings ---
         this._settingsChangedId = this._settings.connect('changed', (s, key) => {
             this._onSettingChanged(key);
@@ -531,6 +538,16 @@ class RateLimitIndicator extends PanelMenu.Button {
 
         actionItem.add_child(actionBox);
         this.menu.addMenuItem(actionItem);
+
+        this._applyMenuThemeClass();
+    }
+
+    _applyMenuThemeClass() {
+        const box = this.menu.box;
+        box.remove_style_class_name('rate-limit-theme-dark');
+        box.remove_style_class_name('rate-limit-theme-light');
+        const isLight = this._stSettings?.color_scheme === St.SystemColorScheme.PREFER_LIGHT;
+        box.add_style_class_name(isLight ? 'rate-limit-theme-light' : 'rate-limit-theme-dark');
     }
 
     _addSingleAccountSection(account) {
@@ -736,6 +753,11 @@ class RateLimitIndicator extends PanelMenu.Button {
         if (this._menuOpenId) {
             this.menu.disconnect(this._menuOpenId);
             this._menuOpenId = null;
+        }
+
+        if (this._colorSchemeHandlerId) {
+            this._stSettings?.disconnect(this._colorSchemeHandlerId);
+            this._colorSchemeHandlerId = null;
         }
 
         this._accountStates.clear();
