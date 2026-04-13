@@ -242,13 +242,6 @@ if (typeof Adw.MessageDialog === 'undefined') {
                 );
             }
 
-            // St.SystemColorScheme (GNOME 44) — guard for GNOME 43
-            out = out.replace(
-                /this\._stSettings\?\.color_scheme\s*===\s*St\.SystemColorScheme\.PREFER_LIGHT/g,
-                "(typeof St.SystemColorScheme !== 'undefined' && " +
-                    "this._stSettings?.color_scheme === St.SystemColorScheme.PREFER_LIGHT)",
-            );
-
             // --- 7. Assemble final output ---
             const isPrefs = chunk.fileName.includes('prefs');
             const wrapper = isPrefs ? PREFS_WRAPPER : EXTENSION_WRAPPER;

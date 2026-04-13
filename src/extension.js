@@ -103,7 +103,12 @@ class RateLimitIndicator extends PanelMenu.Button {
         this._stSettings = St.Settings.get();
         this._colorSchemeHandlerId = this._stSettings.connect(
             'notify::color-scheme',
-            () => this._applyMenuThemeClass()
+            () => this._applyMenuTextColor()
+        );
+        this._ifaceSettings = new Gio.Settings({ schema: 'org.gnome.desktop.interface' });
+        this._ifaceColorSchemeId = this._ifaceSettings.connect(
+            'changed::color-scheme',
+            () => this._applyMenuTextColor()
         );
 
         // --- Connect settings ---
@@ -539,15 +544,39 @@ class RateLimitIndicator extends PanelMenu.Button {
         actionItem.add_child(actionBox);
         this.menu.addMenuItem(actionItem);
 
-        this._applyMenuThemeClass();
+        this._applyMenuTextColor();
     }
 
-    _applyMenuThemeClass() {
-        const box = this.menu.box;
-        box.remove_style_class_name('rate-limit-theme-dark');
-        box.remove_style_class_name('rate-limit-theme-light');
-        const isLight = this._stSettings?.color_scheme === St.SystemColorScheme.PREFER_LIGHT;
-        box.add_style_class_name(isLight ? 'rate-limit-theme-light' : 'rate-limit-theme-dark');
+    _isLightTheme() {
+        // St.SystemColorScheme (GNOME 44+): PREFER_DARK のみをダークと判定
+        if (typeof St.SystemColorScheme !== 'undefined') {
+            const scheme = this._stSettings?.color_scheme;
+            if (scheme === St.SystemColorScheme.PREFER_DARK) return false;
+            if (scheme === St.SystemColorScheme.PREFER_LIGHT) return true;
+        }
+        // フォールバック: Gio.Settings の文字列を直接チェック (GNOME 42+)
+        try {
+            return this._ifaceSettings.get_string('color-scheme') !== 'prefer-dark';
+        } catch (_e) {
+            return false;
+        }
+    }
+
+    _applyMenuTextColor() {
+        const color = this._isLightTheme() ? '#000000' : '#ffffff';
+        this._setLabelColor(this.menu.box, color);
+    }
+
+    _setLabelColor(widget, color) {
+        if (widget instanceof St.Label) {
+            const sc = widget.style_class ?? '';
+            if (!sc.includes('m3-error-label') && !sc.includes('m3-warn-label'))
+                widget.set_style(`color: ${color};`);
+        }
+        try {
+            for (const child of widget.get_children())
+                this._setLabelColor(child, color);
+        } catch (_e) { /* widget has no children */ }
     }
 
     _addSingleAccountSection(account) {
@@ -759,6 +788,12 @@ class RateLimitIndicator extends PanelMenu.Button {
             this._stSettings?.disconnect(this._colorSchemeHandlerId);
             this._colorSchemeHandlerId = null;
         }
+
+        if (this._ifaceColorSchemeId) {
+            this._ifaceSettings.disconnect(this._ifaceColorSchemeId);
+            this._ifaceColorSchemeId = null;
+        }
+        this._ifaceSettings = null;
 
         this._accountStates.clear();
         super.destroy();

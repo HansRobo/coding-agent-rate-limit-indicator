@@ -194,29 +194,3 @@
 .m3-pill-button-secondary:focus {
   background-color: rgba(128, 128, 128, 0.24);
 }
-
-/* === Theme-aware text colors (pure white / black, no opacity) === */
-
-.rate-limit-theme-dark .m3-account-name,
-.rate-limit-theme-dark .m3-window-label,
-.rate-limit-theme-dark .m3-pct-label,
-.rate-limit-theme-dark .m3-updated-label,
-.rate-limit-theme-dark .m3-reset-label,
-.rate-limit-theme-dark .m3-loading-label,
-.rate-limit-theme-dark .m3-empty-label,
-.rate-limit-theme-dark .m3-provider-pill,
-.rate-limit-theme-dark .m3-pill-button-secondary {
-  color: #ffffff;
-}
-
-.rate-limit-theme-light .m3-account-name,
-.rate-limit-theme-light .m3-window-label,
-.rate-limit-theme-light .m3-pct-label,
-.rate-limit-theme-light .m3-updated-label,
-.rate-limit-theme-light .m3-reset-label,
-.rate-limit-theme-light .m3-loading-label,
-.rate-limit-theme-light .m3-empty-label,
-.rate-limit-theme-light .m3-provider-pill,
-.rate-limit-theme-light .m3-pill-button-secondary {
-  color: #000000;
-}
