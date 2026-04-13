@@ -11,7 +11,7 @@ A GNOME Shell extension that monitors rate limit usage for multiple coding agent
 
 ## Architecture
 
-- **Provider pattern**: Each service (Claude, Codex) has a provider in `providers/` implementing `BaseProvider`
+- **Provider pattern**: Each service (Claude, Codex) has a provider in `src/providers/` implementing `BaseProvider`
 - **Normalized data model**: All providers return `{ windows: [{id, label, used, limit, utilization, resetsAt}], planName }`
 - **Display layer** (`extension.js`) consumes normalized data — never touches API details
 - **Account management** (`accounts.js`) stores multi-account config as JSON in GSettings
@@ -19,22 +19,32 @@ A GNOME Shell extension that monitors rate limit usage for multiple coding agent
 
 ## Key Files
 
-- `extension.js` — Panel indicator, popup menu, refresh orchestration
-- `prefs.js` — Preferences UI (libadwaita)
-- `iconCache.js` — Fetches and caches provider SVG icons from provider-defined URLs
-- `providers/base.js` — Base provider interface
-- `providers/claude.js` — Anthropic OAuth API provider
-- `providers/codex.js` — ChatGPT internal API provider
-- `providerRegistry.js` — Provider registration/lookup
-- `accounts.js` — Account CRUD
-- `secret.js` — GNOME Keyring wrapper
-- `constants.js` — Shared constants
+Source lives in `src/`:
+
+- `src/extension.js` — Panel indicator, popup menu, refresh orchestration
+- `src/prefs.js` — Preferences UI (libadwaita)
+- `src/iconCache.js` — Fetches and caches provider SVG icons from provider-defined URLs
+- `src/providers/base.js` — Base provider interface
+- `src/providers/claude.js` — Anthropic OAuth API provider
+- `src/providers/codex.js` — ChatGPT internal API provider
+- `src/providerRegistry.js` — Provider registration/lookup
+- `src/accounts.js` — Account CRUD
+- `src/secret.js` — GNOME Keyring wrapper
+- `src/constants.js` — Shared constants
+
+Build infrastructure:
+
+- `build/build.mjs` — Build orchestrator (modern copy + legacy Rollup bundle)
+- `build/rollup-plugin-gjs-legacy.mjs` — Custom Rollup plugin: transforms `gi://` imports, entry-point
+  class wrappers, API compat patches (Adw.AlertDialog→MessageDialog, atob polyfill, etc.)
 
 ## Development
 
-### Install for development
+### Build and install for development
 ```bash
-./install.sh
+npm install          # first time only
+npm run build        # produces dist/gnome45/ and dist/gnome-legacy/
+./install.sh         # auto-detects GNOME version, builds if needed, installs
 ```
 
 ### Enable/disable
@@ -50,12 +60,21 @@ journalctl -f -o cat /usr/bin/gnome-shell
 
 ### Compile schemas (done by install.sh)
 ```bash
-glib-compile-schemas schemas/
+glib-compile-schemas src/schemas/
 ```
+
+## Build Targets
+
+| Target | Directory | Shell versions | Format |
+|--------|-----------|----------------|--------|
+| modern | `dist/gnome45/` | 45–50 | ES modules (source copy) |
+| legacy | `dist/gnome-legacy/` | 42–44 | Rollup-bundled single files, legacy GJS |
+
+The legacy build bundles all modules into `extension.js` and `prefs.js` — no `providers/` directory.
 
 ## Conventions
 
-- GNOME Shell 45+ ES module syntax (`import ... from 'gi://...'`)
+- GNOME Shell 45+ ES module syntax (`import ... from 'gi://...'`) in `src/`
 - GObject.registerClass for all Shell widgets
 - Async operations via GLib/Gio callbacks wrapped in Promises
 - No external dependencies beyond GNOME platform libraries
@@ -63,9 +82,9 @@ glib-compile-schemas schemas/
 
 ## Adding a New Provider
 
-1. Create `providers/<name>.js` extending `BaseProvider`
+1. Create `src/providers/<name>.js` extending `BaseProvider`
 2. Implement static properties: `id`, `displayName`
 3. Implement `static getIconUrl(style)` → URL string for 'monochrome' and 'color' styles. Icons are fetched at runtime and cached in `~/.cache/coding-agent-rate-limit-indicator/icons/`. Optionally override `static get shortLabel()` for a 2-char text fallback (default: initials of displayName).
 4. Implement `fetchUsage(account, session, getToken)` → `UsageResult`
-5. Register in `providerRegistry.js`: `registerProvider(NewProvider)`
-6. Add constants to `constants.js` if needed
+5. Register in `src/providerRegistry.js`: `registerProvider(NewProvider)`
+6. Add constants to `src/constants.js` if needed

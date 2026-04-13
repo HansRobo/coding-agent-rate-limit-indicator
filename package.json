@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build/build.mjs",
+    "build:modern": "node build/build.mjs --target modern",
+    "build:legacy": "node build/build.mjs --target legacy"
+  },
+  "devDependencies": {
+    "rollup": "^4"
+  }
+}
