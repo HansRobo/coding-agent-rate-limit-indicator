@@ -686,8 +686,8 @@ class RateLimitIndicator extends PanelMenu.Button {
         const match = label.match(/(\d+)/);
         if (lower.includes('hour')) return match ? `${match[1]}h` : label.substring(0, 2);
         if (lower.includes('day')) return match ? `${match[1]}d` : label.substring(0, 2);
-        if (lower.includes('week')) return 'wk';
-        if (lower.includes('month')) return 'mo';
+        if (lower.includes('week')) return '7d';
+        if (lower.includes('month')) return '30d';
         if (lower.includes('primary')) return '1°';
         return label.substring(0, 3);
     }
@@ -718,7 +718,7 @@ class RateLimitIndicator extends PanelMenu.Button {
         const minutes = Math.floor(seconds / 60);
         if (minutes < 60) return `${minutes}m ago`;
         const hours = Math.floor(minutes / 60);
-        return `${hours}h ${minutes % 60}m ago`;
+        return `${hours}h${minutes % 60}m ago`;
     }
 
     // --- Cleanup ---

@@ -160,9 +160,9 @@ export class GlmProvider extends BaseProvider {
         if (type === 'TOKENS_LIMIT' && unit === 3 && number === 5)
             return {id: WINDOW_FIVE_HOUR, label: '5-Hour'};
         if (type === 'TOKENS_LIMIT' && unit === 6 && number === 1)
-            return {id: WINDOW_WEEKLY, label: 'Weekly'};
+            return {id: WINDOW_WEEKLY, label: '7-Day'};
         if (type === 'TIME_LIMIT' && unit === 5 && number === 1)
-            return {id: WINDOW_MONTHLY, label: 'Monthly'};
+            return {id: WINDOW_MONTHLY, label: '30-Day'};
         return null;
     }
 }

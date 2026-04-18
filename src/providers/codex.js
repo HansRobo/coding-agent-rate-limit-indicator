@@ -342,7 +342,7 @@ export class CodexProvider extends BaseProvider {
             rateLimit,
             ['secondary_window', 'secondary', 'weekly', 'seven_day', '7d'],
             WINDOW_WEEKLY,
-            'Weekly'
+            '7-Day'
         );
         if (weekly) windows.push(weekly);
 
