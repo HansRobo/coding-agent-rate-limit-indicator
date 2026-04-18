@@ -25,12 +25,6 @@
   font-weight: 500;
 }
 
-/* Panel vertical bars group (in top bar, one bar per account) */
-.panel-bars-group {
-  spacing: 2px;
-  padding: 0 2px;
-}
-
 .panel-vbar-container {
   width: 5px;
   height: 20px;

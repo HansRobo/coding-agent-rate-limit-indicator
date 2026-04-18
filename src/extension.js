@@ -86,15 +86,8 @@ class RateLimitIndicator extends PanelMenu.Button {
         });
         this.add_child(this._panelBox);
 
-        // Panel vertical bars group (always kept as a persistent child; bars rebuilt per account)
-        this._panelBarsGroup = new St.BoxLayout({
-            style_class: 'panel-bars-group',
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this._panelBox.add_child(this._panelBarsGroup);
-
         // Apply initial display mode
-        this._updateDisplayMode();
+        this._updatePanelDisplay();
 
         // --- Build popup menu ---
         this._buildMenu();
@@ -200,7 +193,6 @@ class RateLimitIndicator extends PanelMenu.Button {
             this._startTimer();
             break;
         case 'display-mode':
-            this._updateDisplayMode();
             this._updatePanelDisplay();
             break;
         case 'proxy-url':
@@ -219,13 +211,6 @@ class RateLimitIndicator extends PanelMenu.Button {
             this._updatePanelDisplay();
             break;
         }
-    }
-
-    _updateDisplayMode() {
-        const mode = this._settings.get_string('display-mode');
-        // Account segments (text/icon) are managed by _updatePanelDisplay();
-        // only the bar visibility needs to be set here.
-        this._panelBarsGroup.visible = (mode === DISPLAY_MODE_BAR || mode === DISPLAY_MODE_BOTH);
     }
 
     // --- Data Fetching ---
@@ -332,17 +317,7 @@ class RateLimitIndicator extends PanelMenu.Button {
         const showContent = (mode === DISPLAY_MODE_TEXT || mode === DISPLAY_MODE_BOTH);
         const showBars = (mode === DISPLAY_MODE_BAR || mode === DISPLAY_MODE_BOTH);
 
-        // Remove existing dynamic account segments (all children except the bars group)
-        const toRemove = [];
-        for (let i = 0; i < this._panelBox.get_n_children(); i++) {
-            const child = this._panelBox.get_child_at_index(i);
-            if (child !== this._panelBarsGroup)
-                toRemove.push(child);
-        }
-        for (const child of toRemove)
-            this._panelBox.remove_child(child);
-
-        this._panelBarsGroup.remove_all_children();
+        this._panelBox.remove_all_children();
 
         if (visibleAccounts.length === 0) {
             if (showContent) {
@@ -358,16 +333,27 @@ class RateLimitIndicator extends PanelMenu.Button {
             return;
         }
 
-        let insertIdx = 0;
-
         for (let i = 0; i < visibleAccounts.length; i++) {
             const account = visibleAccounts[i];
             const state = this._accountStates.get(account.id);
             const providerClass = getProvider(account.provider);
             const primaryWindow = state?.result?.windows?.[0] ?? null;
 
+            if (i > 0 && showContent) {
+                this._panelBox.add_child(new St.Label({
+                    style_class: 'panel-rate-limit-label',
+                    text: ' | ',
+                    y_align: Clutter.ActorAlign.CENTER,
+                }));
+            }
+
+            const segment = new St.BoxLayout({
+                style_class: 'panel-account-segment',
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+
             if (showBars)
-                this._addVerticalBar(primaryWindow?.utilization ?? 0);
+                segment.add_child(this._createVerticalBar(primaryWindow?.utilization ?? 0));
 
             if (showContent) {
                 // Build status text
@@ -396,24 +382,6 @@ class RateLimitIndicator extends PanelMenu.Button {
                     }
                 }
 
-                // Add separator before second+ accounts
-                if (i > 0) {
-                    this._panelBox.insert_child_at_index(
-                        new St.Label({
-                            style_class: 'panel-rate-limit-label',
-                            text: ' | ',
-                            y_align: Clutter.ActorAlign.CENTER,
-                        }),
-                        insertIdx++
-                    );
-                }
-
-                // Account segment: icon (or text fallback) + status
-                const segment = new St.BoxLayout({
-                    style_class: 'panel-account-segment',
-                    y_align: Clutter.ActorAlign.CENTER,
-                });
-
                 // Provider icon or text fallback
                 let iconWidget = null;
                 if (showIcons && providerClass) {
@@ -434,7 +402,6 @@ class RateLimitIndicator extends PanelMenu.Button {
                 }
 
                 if (!iconWidget) {
-                    // Text fallback
                     const fallback = providerClass
                         ? providerClass.shortLabel
                         : account.provider.toUpperCase().substring(0, 2);
@@ -451,13 +418,13 @@ class RateLimitIndicator extends PanelMenu.Button {
                     text: statusText,
                     y_align: Clutter.ActorAlign.CENTER,
                 }));
-
-                this._panelBox.insert_child_at_index(segment, insertIdx++);
             }
+
+            this._panelBox.add_child(segment);
         }
     }
 
-    _addVerticalBar(utilization) {
+    _createVerticalBar(utilization) {
         const clampedFraction = Math.max(0, Math.min(1, utilization));
         const fillHeight = Math.round(clampedFraction * PANEL_VBAR_HEIGHT);
 
@@ -473,7 +440,7 @@ class RateLimitIndicator extends PanelMenu.Button {
         fill.set_position(0, PANEL_VBAR_HEIGHT - fillHeight);
 
         container.add_child(fill);
-        this._panelBarsGroup.add_child(container);
+        return container;
     }
 
     // --- Popup Menu ---
