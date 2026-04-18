@@ -302,7 +302,7 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             sensitive,
             tooltip_text: tooltipText,
         });
-        button.add_css_class('flat');
+        button.add_css_class('circular');
         button.connect('clicked', onClick);
         return button;
     }
