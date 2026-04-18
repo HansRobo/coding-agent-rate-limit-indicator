@@ -376,6 +376,7 @@ export default class RateLimitPreferences extends ExtensionPreferences {
         dialog.add_response('cancel', 'Cancel');
         dialog.add_response('add', 'Add');
         dialog.set_response_appearance('add', Adw.ResponseAppearance.SUGGESTED);
+        try { dialog.set_default_response('add'); } catch (_) {}
 
         const box = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
@@ -400,17 +401,27 @@ export default class RateLimitPreferences extends ExtensionPreferences {
 
         dialog.set_extra_child(box);
 
-        dialog.connect('response', (_dialog, response) => {
-            if (response === 'add') {
-                const name = nameEntry.get_text().trim() || provider.displayName;
-                const account = addAccount(settings, provider.id, name, provider.defaultConfig);
-                if (tokenEntry) {
-                    const token = tokenEntry.get_text().trim();
-                    if (token)
-                        storeToken(account.id, token);
-                }
+        const submit = () => {
+            const name = nameEntry.get_text().trim() || provider.displayName;
+            const account = addAccount(settings, provider.id, name, provider.defaultConfig);
+            if (tokenEntry) {
+                const token = tokenEntry.get_text().trim();
+                if (token)
+                    storeToken(account.id, token);
             }
+            dialog.close();
+        };
+
+        dialog.connect('response', (_dialog, response) => {
+            if (response === 'add') submit();
         });
+
+        nameEntry.connect('activate', () => {
+            if (tokenEntry) tokenEntry.grab_focus();
+            else submit();
+        });
+        if (tokenEntry)
+            tokenEntry.connect('activate', () => submit());
 
         dialog.present(window);
     }
