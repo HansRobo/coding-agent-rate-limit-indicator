@@ -6,8 +6,7 @@
 #   GNOME 45+  →  dist/gnome45/      (ES module format, direct copy)
 #   GNOME <45  →  dist/gnome-legacy/ (Rollup-bundled, legacy GJS format)
 #
-# The build step runs automatically when the dist/ directory is absent.
-# To force a rebuild: rm -rf dist/ && ./install.sh
+# The build step always runs to ensure dist/ is up to date.
 
 set -euo pipefail
 
@@ -28,27 +27,24 @@ BUILD_DIR="$SOURCE_DIR/dist/$BUILD_TARGET"
 
 echo "Detected GNOME Shell $GNOME_MAJOR → using build target: $BUILD_TARGET"
 
-# --- Build if dist is absent ---
-if [ ! -d "$BUILD_DIR" ]; then
-    echo "Build not found. Running build step…"
-    if ! command -v node &>/dev/null; then
-        echo "Error: Node.js is required for the build step but was not found." >&2
-        echo "Install Node.js (https://nodejs.org/) and re-run this script." >&2
-        exit 1
-    fi
-    (
-        cd "$SOURCE_DIR"
-        if [ ! -d node_modules ]; then
-            echo "Installing npm dependencies…"
-            npm install
-        fi
-        if [ "$BUILD_TARGET" = "gnome45" ]; then
-            npm run build:modern
-        else
-            npm run build:legacy
-        fi
-    )
+# --- Build ---
+if ! command -v node &>/dev/null; then
+    echo "Error: Node.js is required for the build step but was not found." >&2
+    echo "Install Node.js (https://nodejs.org/) and re-run this script." >&2
+    exit 1
 fi
+(
+    cd "$SOURCE_DIR"
+    if [ ! -d node_modules ]; then
+        echo "Installing npm dependencies…"
+        npm install
+    fi
+    if [ "$BUILD_TARGET" = "gnome45" ]; then
+        npm run build:modern
+    else
+        npm run build:legacy
+    fi
+)
 
 echo "Installing $EXTENSION_UUID from $BUILD_DIR…"
 

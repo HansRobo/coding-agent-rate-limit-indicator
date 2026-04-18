@@ -44,7 +44,7 @@ Build infrastructure:
 ```bash
 npm install          # first time only
 npm run build        # produces dist/gnome45/ and dist/gnome-legacy/
-./install.sh         # auto-detects GNOME version, builds if needed, installs
+./install.sh         # auto-detects GNOME version, always rebuilds, then installs
 ```
 
 ### Enable/disable
