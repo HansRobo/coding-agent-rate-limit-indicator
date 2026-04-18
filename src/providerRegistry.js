@@ -4,6 +4,7 @@
 
 import {ClaudeProvider} from './providers/claude.js';
 import {CodexProvider} from './providers/codex.js';
+import {GeminiProvider} from './providers/gemini.js';
 import {GlmProvider} from './providers/glm.js';
 
 // Map of provider ID -> provider class
@@ -66,4 +67,5 @@ export function createProviderInstance(providerId) {
 // --- Register built-in providers ---
 registerProvider(ClaudeProvider);
 registerProvider(CodexProvider);
+registerProvider(GeminiProvider);
 registerProvider(GlmProvider);

@@ -236,16 +236,7 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             // Provider-specific config fields
             if (provider) {
                 for (const field of provider.configFields) {
-                    const configRow = new Adw.EntryRow({
-                        title: field.label,
-                        show_apply_button: true,
-                    });
-                    configRow.set_text(account.config?.[field.key] ?? '');
-                    configRow.connect('apply', () => {
-                        updateAccount(settings, account.id, {
-                            config: {[field.key]: configRow.get_text()},
-                        });
-                    });
+                    const configRow = this._createConfigRow(field, provider, account, settings);
                     expander.add_row(configRow);
                 }
             }
@@ -298,6 +289,50 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             group.add(expander);
             this._accountRows.push(expander);
         }
+    }
+
+    _createConfigRow(field, provider, account, settings) {
+        const currentValue =
+            account.config?.[field.key] ??
+            provider.defaultConfig?.[field.key] ??
+            '';
+
+        if (field.type === 'choice') {
+            const options = Array.isArray(field.options) ? field.options : [];
+            const labels = options.map(option => option.label);
+            const choiceRow = new Adw.ComboRow({
+                title: field.label,
+                model: Gtk.StringList.new(labels),
+            });
+            const matchIndex = options.findIndex(option => option.value === currentValue);
+            const defaultIndex = options.findIndex(
+                option => option.value === (provider.defaultConfig?.[field.key] ?? '')
+            );
+            const selectedIndex = matchIndex >= 0 ? matchIndex : Math.max(0, defaultIndex);
+            choiceRow.set_selected(selectedIndex);
+            choiceRow.connect('notify::selected', () => {
+                const option = options[choiceRow.get_selected()];
+                if (!option)
+                    return;
+
+                updateAccount(settings, account.id, {
+                    config: {[field.key]: option.value},
+                });
+            });
+            return choiceRow;
+        }
+
+        const entryRow = new Adw.EntryRow({
+            title: field.label,
+            show_apply_button: true,
+        });
+        entryRow.set_text(currentValue);
+        entryRow.connect('apply', () => {
+            updateAccount(settings, account.id, {
+                config: {[field.key]: entryRow.get_text()},
+            });
+        });
+        return entryRow;
     }
 
     _removeAccountRows(group) {

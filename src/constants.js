@@ -3,6 +3,7 @@
 // --- Provider IDs ---
 export const PROVIDER_CLAUDE = 'claude';
 export const PROVIDER_CODEX = 'codex';
+export const PROVIDER_GEMINI = 'gemini';
 export const PROVIDER_GLM = 'glm';
 
 // --- Claude (Anthropic) ---
@@ -20,6 +21,10 @@ export const CODEX_USAGE_ENDPOINT = '/backend-api/wham/usage';
 export const CODEX_ME_ENDPOINT = '/backend-api/me';
 export const CODEX_REFERER = 'https://chatgpt.com/codex/settings/usage';
 export const CODEX_AUTH_TOKEN_ENDPOINT = 'https://auth.openai.com/oauth/token';
+
+// --- Gemini / Antigravity (Google Code Assist) ---
+export const GEMINI_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+export const GEMINI_CODE_ASSIST_BASE = 'https://cloudcode-pa.googleapis.com/v1internal';
 
 // --- Defaults ---
 export const DEFAULT_REFRESH_INTERVAL = 300; // seconds
@@ -57,4 +62,3 @@ export const MENU_BAR_HEIGHT = 6;
 
 // --- Schema ID ---
 export const SCHEMA_ID = 'org.gnome.shell.extensions.coding-agent-rate-limit-indicator';
-

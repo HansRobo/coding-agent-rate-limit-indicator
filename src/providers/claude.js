@@ -118,15 +118,6 @@ export class ClaudeProvider extends BaseProvider {
     }
 
     /**
-     * Check if the token is expired or within bufferSec of expiry.
-     * expiresAt is epoch milliseconds (as stored by the Claude CLI).
-     */
-    _isTokenExpired(expiresAt, bufferSec = 300) {
-        if (!expiresAt) return false;
-        return Date.now() >= expiresAt - bufferSec * 1000;
-    }
-
-    /**
      * Use the refresh_token to obtain a new access_token, then write
      * the updated credentials back to the file.
      */
@@ -205,7 +196,7 @@ export class ClaudeProvider extends BaseProvider {
             creds = await this._readCredentials(credPath);
 
             // Proactively refresh if the token is expired or about to expire
-            if (this._isTokenExpired(creds.expiresAt)) {
+            if (this._isExpiryTimestampExpired(creds.expiresAt)) {
                 token = await this._refreshAccessToken(creds, session);
             } else {
                 token = creds.accessToken;

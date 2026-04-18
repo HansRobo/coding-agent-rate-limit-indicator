@@ -81,7 +81,16 @@ export class BaseProvider {
     /**
      * Description of what config fields this provider expects.
      * Used by the preferences UI to render provider-specific settings.
-     * @returns {Array<{key: string, label: string, type: string, placeholder: string}>}
+     * Supported field types:
+     *   - string: free-form text input
+     *   - choice: select from a fixed list of options
+     * @returns {Array<{
+     *   key: string,
+     *   label: string,
+     *   type: string,
+     *   placeholder?: string,
+     *   options?: Array<{value: string, label: string}>
+     * }>}
      */
     static getConfigFields() {
         return [];
@@ -141,6 +150,14 @@ export class BaseProvider {
         if (value == null) return null;
 
         if (typeof value === 'string') {
+            // Pure-digit string: treat as a numeric timestamp.
+            if (/^\d+$/.test(value)) {
+                const n = Number.parseInt(value, 10);
+                const ms = n < 1e12 ? n * 1000 : n;
+                const d = new Date(ms);
+                return isNaN(d.getTime()) ? null : d;
+            }
+
             const d = new Date(value);
             return isNaN(d.getTime()) ? null : d;
         }
@@ -154,6 +171,15 @@ export class BaseProvider {
         }
 
         return null;
+    }
+
+    /**
+     * Check if an epoch-ms expiry timestamp is expired or within bufferSec of expiry.
+     * Returns false when expiresAt is falsy (treat unknown expiry as still valid).
+     */
+    _isExpiryTimestampExpired(expiresAt, bufferSec = 300) {
+        if (!expiresAt) return false;
+        return Date.now() >= expiresAt - bufferSec * 1000;
     }
 
     /**

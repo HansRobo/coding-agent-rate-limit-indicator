@@ -55,7 +55,7 @@ async function buildModern() {
         await cp(join(SRC_DIR, f), join(out, f));
     }
 
-    const providerJs = ['base.js', 'claude.js', 'codex.js', 'glm.js'];
+    const providerJs = ['base.js', 'claude.js', 'codex.js', 'gemini.js', 'glm.js'];
     for (const f of providerJs) {
         await cp(join(SRC_DIR, 'providers', f), join(out, 'providers', f));
     }
