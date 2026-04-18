@@ -6,12 +6,10 @@ import Gio from 'gi://Gio';
 import Soup from 'gi://Soup?version=3.0';
 
 import {BaseProvider} from './base.js';
-import {
-    PROVIDER_GEMINI,
-    GEMINI_TOKEN_ENDPOINT,
-    GEMINI_CODE_ASSIST_BASE,
-    WINDOW_PRIMARY,
-} from '../constants.js';
+
+const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+const CODE_ASSIST_BASE = 'https://cloudcode-pa.googleapis.com/v1internal';
+const WIN_PRIMARY = 'primary';
 
 const PANEL_QUOTA_MOST_CONSTRAINED = 'most_constrained';
 const PANEL_QUOTA_POOLED_FIRST = 'pooled_first';
@@ -23,7 +21,7 @@ const GEMINI_USER_AGENT = 'coding-agent-rate-limit-indicator/1.0.0';
 
 export class GeminiProvider extends BaseProvider {
     static get id() {
-        return PROVIDER_GEMINI;
+        return 'gemini';
     }
 
     static get displayName() {
@@ -44,6 +42,10 @@ export class GeminiProvider extends BaseProvider {
 
     static get requiresManualToken() {
         return false;
+    }
+
+    static get brandColor() {
+        return 'rgba(66, 133, 244, 0.40)';
     }
 
     static getDefaultConfig() {
@@ -223,7 +225,7 @@ export class GeminiProvider extends BaseProvider {
             ].join('&');
 
             const body = GLib.Bytes.new(new TextEncoder().encode(form));
-            const msg = Soup.Message.new('POST', GEMINI_TOKEN_ENDPOINT);
+            const msg = Soup.Message.new('POST', TOKEN_ENDPOINT);
             msg.request_headers.append('Content-Type', 'application/x-www-form-urlencoded');
             msg.set_request_body_from_bytes('application/x-www-form-urlencoded', body);
 
@@ -319,7 +321,7 @@ export class GeminiProvider extends BaseProvider {
     }
 
     async _retrieveUserQuota(session, projectId, accessToken) {
-        const url = `${GEMINI_CODE_ASSIST_BASE}:retrieveUserQuota`;
+        const url = `${CODE_ASSIST_BASE}:retrieveUserQuota`;
 
         try {
             return await this._requestJson(
@@ -351,7 +353,7 @@ export class GeminiProvider extends BaseProvider {
         const loadRes = await this._requestJson(
             session,
             'POST',
-            `${GEMINI_CODE_ASSIST_BASE}:loadCodeAssist`,
+            `${CODE_ASSIST_BASE}:loadCodeAssist`,
             {
                 cloudaicompanionProject: configuredProjectId ?? undefined,
                 metadata: this._buildClientMetadata(configuredProjectId),
@@ -395,7 +397,7 @@ export class GeminiProvider extends BaseProvider {
         let operation = await this._requestJson(
             session,
             'POST',
-            `${GEMINI_CODE_ASSIST_BASE}:onboardUser`,
+            `${CODE_ASSIST_BASE}:onboardUser`,
             onboardReq,
             accessToken
         );
@@ -405,7 +407,7 @@ export class GeminiProvider extends BaseProvider {
             operation = await this._requestJson(
                 session,
                 'GET',
-                `${GEMINI_CODE_ASSIST_BASE}/${operation.name}`,
+                `${CODE_ASSIST_BASE}/${operation.name}`,
                 null,
                 accessToken
             );
@@ -598,12 +600,14 @@ export class GeminiProvider extends BaseProvider {
         const isPrimary = !bucket.modelId;
         const label = isPrimary ? 'Primary' : this._labelForModel(bucket.modelId);
         const id = isPrimary
-            ? WINDOW_PRIMARY
+            ? WIN_PRIMARY
             : `gemini_model_${this._slugify(bucket.modelId)}`;
+        const shortLabel = isPrimary ? '1°' : label.substring(0, 3);
 
         return {
             id,
             label,
+            shortLabel,
             used,
             limit,
             utilization,
@@ -674,12 +678,12 @@ export class GeminiProvider extends BaseProvider {
         const sorted = [...windows].sort((a, b) => {
             if (b.utilization !== a.utilization)
                 return b.utilization - a.utilization;
-            if (a.id === WINDOW_PRIMARY) return -1;
-            if (b.id === WINDOW_PRIMARY) return 1;
+            if (a.id === WIN_PRIMARY) return -1;
+            if (b.id === WIN_PRIMARY) return 1;
             return a.label.localeCompare(b.label);
         });
 
-        const primary = sorted.find(window => window.id === WINDOW_PRIMARY);
+        const primary = sorted.find(window => window.id === WIN_PRIMARY);
         if (!primary)
             return sorted;
 
@@ -689,7 +693,7 @@ export class GeminiProvider extends BaseProvider {
         if (strategy === PANEL_QUOTA_POOLED_FIRST) {
             return [
                 primary,
-                ...sorted.filter(window => window.id !== WINDOW_PRIMARY),
+                ...sorted.filter(window => window.id !== WIN_PRIMARY),
             ];
         }
 

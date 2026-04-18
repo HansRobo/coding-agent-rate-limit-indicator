@@ -6,19 +6,17 @@ import Gio from 'gi://Gio';
 import Soup from 'gi://Soup?version=3.0';
 
 import {BaseProvider} from './base.js';
-import {
-    PROVIDER_CLAUDE,
-    CLAUDE_API_URL,
-    CLAUDE_BETA_HEADER,
-    CLAUDE_TOKEN_ENDPOINT,
-    CLAUDE_CLIENT_ID,
-    WINDOW_FIVE_HOUR,
-    WINDOW_SEVEN_DAY,
-} from '../constants.js';
+
+const API_URL = 'https://api.anthropic.com/api/oauth/usage';
+const BETA_HEADER = 'oauth-2025-04-20';
+const TOKEN_ENDPOINT = 'https://api.anthropic.com/v1/oauth/token';
+const CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e';
+const WIN_FIVE_HOUR = 'five_hour';
+const WIN_SEVEN_DAY = 'seven_day';
 
 export class ClaudeProvider extends BaseProvider {
     static get id() {
-        return PROVIDER_CLAUDE;
+        return 'claude';
     }
 
     static get displayName() {
@@ -37,6 +35,28 @@ export class ClaudeProvider extends BaseProvider {
 
     static get requiresManualToken() {
         return false;
+    }
+
+    static get brandColor() {
+        return 'rgba(217, 119, 80, 0.40)';
+    }
+
+    static detectCredentials() {
+        const found = [];
+        const homeDir = GLib.get_home_dir();
+
+        const defaultPath = GLib.build_filenamev([homeDir, '.claude', '.credentials.json']);
+        if (GLib.file_test(defaultPath, GLib.FileTest.EXISTS))
+            found.push({name: 'Default', credentialPath: ''});
+
+        const configDir = GLib.getenv('CLAUDE_CONFIG_DIR');
+        if (configDir) {
+            const envPath = GLib.build_filenamev([configDir, '.credentials.json']);
+            if (GLib.file_test(envPath, GLib.FileTest.EXISTS) && envPath !== defaultPath)
+                found.push({name: 'Custom', credentialPath: envPath});
+        }
+
+        return found;
     }
 
     static getDefaultConfig() {
@@ -132,11 +152,11 @@ export class ClaudeProvider extends BaseProvider {
                 new TextEncoder().encode(
                     `grant_type=refresh_token` +
                     `&refresh_token=${encodeURIComponent(creds.refreshToken)}` +
-                    `&client_id=${encodeURIComponent(CLAUDE_CLIENT_ID)}`
+                    `&client_id=${encodeURIComponent(CLIENT_ID)}`
                 )
             );
 
-            const msg = Soup.Message.new('POST', CLAUDE_TOKEN_ENDPOINT);
+            const msg = Soup.Message.new('POST', TOKEN_ENDPOINT);
             msg.request_headers.append(
                 'Content-Type', 'application/x-www-form-urlencoded'
             );
@@ -220,9 +240,9 @@ export class ClaudeProvider extends BaseProvider {
 
     _callUsageApi(token, session) {
         return new Promise((resolve, reject) => {
-            const message = Soup.Message.new('GET', CLAUDE_API_URL);
+            const message = Soup.Message.new('GET', API_URL);
             message.request_headers.append('Authorization', `Bearer ${token}`);
-            message.request_headers.append('anthropic-beta', CLAUDE_BETA_HEADER);
+            message.request_headers.append('anthropic-beta', BETA_HEADER);
 
             session.send_and_read_async(
                 message,
@@ -273,8 +293,9 @@ export class ClaudeProvider extends BaseProvider {
 
         if (data.five_hour) {
             windows.push({
-                id: WINDOW_FIVE_HOUR,
+                id: WIN_FIVE_HOUR,
                 label: '5-Hour',
+                shortLabel: '5h',
                 used: null,
                 limit: null,
                 utilization: (data.five_hour.utilization ?? 0) / 100,
@@ -284,8 +305,9 @@ export class ClaudeProvider extends BaseProvider {
 
         if (data.seven_day) {
             windows.push({
-                id: WINDOW_SEVEN_DAY,
+                id: WIN_SEVEN_DAY,
                 label: '7-Day',
+                shortLabel: '7d',
                 used: null,
                 limit: null,
                 utilization: (data.seven_day.utilization ?? 0) / 100,

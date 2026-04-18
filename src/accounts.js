@@ -2,7 +2,7 @@
 // Accounts are stored as a JSON array in GSettings.
 // Each account: { id, provider, name, config }.
 
-import GLib from 'gi://GLib';
+import {getAllProviders} from './providerRegistry.js';
 
 /**
  * Generate a unique account ID.
@@ -211,59 +211,11 @@ export function getAccountDisplayLabel(account, allVisibleAccounts, providerRegi
 }
 
 /**
- * Auto-detect Codex CLI auth files on disk.
- * Checks default and CODEX_HOME locations.
- * @returns {Array<{name: string, credentialPath: string}>}
+ * Auto-detect credential files on disk for all registered providers.
+ * @returns {Array<{name: string, credentialPath: string, providerId: string}>}
  */
-export function detectCodexCredentials() {
-    const found = [];
-    const homeDir = GLib.get_home_dir();
-
-    const defaultPath = GLib.build_filenamev([homeDir, '.codex', 'auth.json']);
-    if (GLib.file_test(defaultPath, GLib.FileTest.EXISTS)) {
-        found.push({name: 'Default', credentialPath: ''});
-    }
-
-    const codexHome = GLib.getenv('CODEX_HOME');
-    if (codexHome) {
-        const envPath = GLib.build_filenamev([codexHome, 'auth.json']);
-        if (
-            GLib.file_test(envPath, GLib.FileTest.EXISTS) &&
-            envPath !== defaultPath
-        ) {
-            found.push({name: 'Custom', credentialPath: envPath});
-        }
-    }
-
-    return found;
-}
-
-/**
- * Auto-detect Claude accounts from credential files on disk.
- * Checks default and common locations.
- * @returns {Array<{name: string, credentialPath: string}>}
- */
-export function detectClaudeCredentials() {
-    const found = [];
-    const homeDir = GLib.get_home_dir();
-
-    // Check default path
-    const defaultPath = GLib.build_filenamev([homeDir, '.claude', '.credentials.json']);
-    if (GLib.file_test(defaultPath, GLib.FileTest.EXISTS)) {
-        found.push({name: 'Default', credentialPath: ''});
-    }
-
-    // Check CLAUDE_CONFIG_DIR
-    const configDir = GLib.getenv('CLAUDE_CONFIG_DIR');
-    if (configDir) {
-        const envPath = GLib.build_filenamev([configDir, '.credentials.json']);
-        if (
-            GLib.file_test(envPath, GLib.FileTest.EXISTS) &&
-            envPath !== defaultPath
-        ) {
-            found.push({name: 'Custom', credentialPath: envPath});
-        }
-    }
-
-    return found;
+export function detectAllCredentials() {
+    return getAllProviders().flatMap(p =>
+        p.detectCredentials().map(c => ({...c, providerId: p.id}))
+    );
 }

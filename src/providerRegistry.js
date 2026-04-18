@@ -45,6 +45,7 @@ export function getProviderList() {
         displayName: p.displayName,
         shortLabel: p.shortLabel,
         cssClass: p.cssClass,
+        brandColor: p.brandColor,
         supportsAutoDetect: p.supportsAutoDetect,
         requiresManualToken: p.requiresManualToken,
         tokenFieldLabel: p.tokenFieldLabel,
@@ -65,7 +66,5 @@ export function createProviderInstance(providerId) {
 }
 
 // --- Register built-in providers ---
-registerProvider(ClaudeProvider);
-registerProvider(CodexProvider);
-registerProvider(GeminiProvider);
-registerProvider(GlmProvider);
+const BUILTINS = [ClaudeProvider, CodexProvider, GeminiProvider, GlmProvider];
+BUILTINS.forEach(registerProvider);

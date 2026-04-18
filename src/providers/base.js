@@ -6,6 +6,7 @@
  * @typedef {Object} UsageWindow
  * @property {string}  id           - Window identifier (e.g. 'five_hour', 'seven_day')
  * @property {string}  label        - Human-readable label (e.g. '5-Hour', '7-Day')
+ * @property {string}  shortLabel   - Compact label for panel display (e.g. '5h', '7d', '1°')
  * @property {number|null} used     - Tokens/requests used (null if unavailable)
  * @property {number|null} limit    - Token/request limit (null if unavailable)
  * @property {number}  utilization  - 0-1 fraction of usage
@@ -67,6 +68,24 @@ export class BaseProvider {
      */
     static get cssClass() {
         return this.id;
+    }
+
+    /**
+     * Brand color for the provider pill badge (CSS color string, e.g. 'rgba(...)').
+     * Return null to use the default pill background from stylesheet.css.
+     * @returns {string|null}
+     */
+    static get brandColor() {
+        return null;
+    }
+
+    /**
+     * Auto-detect credential files on disk for this provider.
+     * Override in subclasses that support supportsAutoDetect.
+     * @returns {Array<{name: string, credentialPath: string}>}
+     */
+    static detectCredentials() {
+        return [];
     }
 
     /**

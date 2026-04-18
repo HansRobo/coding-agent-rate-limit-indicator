@@ -10,17 +10,15 @@ import GLib from 'gi://GLib';
 import Soup from 'gi://Soup?version=3.0';
 
 import {BaseProvider} from './base.js';
-import {
-    PROVIDER_GLM,
-    GLM_API_URL,
-    WINDOW_FIVE_HOUR,
-    WINDOW_WEEKLY,
-    WINDOW_MONTHLY,
-} from '../constants.js';
+
+const API_URL = 'https://api.z.ai/api/monitor/usage/quota/limit';
+const WIN_FIVE_HOUR = 'five_hour';
+const WIN_WEEKLY = 'weekly';
+const WIN_MONTHLY = 'monthly';
 
 export class GlmProvider extends BaseProvider {
     static get id() {
-        return PROVIDER_GLM;
+        return 'glm';
     }
 
     static get displayName() {
@@ -47,6 +45,10 @@ export class GlmProvider extends BaseProvider {
         return 'API key';
     }
 
+    static get brandColor() {
+        return 'rgba(59, 130, 246, 0.40)';
+    }
+
     static getDefaultConfig() {
         return {};
     }
@@ -63,7 +65,7 @@ export class GlmProvider extends BaseProvider {
         }
 
         return new Promise((resolve, reject) => {
-            const message = Soup.Message.new('GET', GLM_API_URL);
+            const message = Soup.Message.new('GET', API_URL);
             message.request_headers.append('Authorization', `Bearer ${token.trim()}`);
             message.request_headers.append('Accept', 'application/json');
 
@@ -135,6 +137,7 @@ export class GlmProvider extends BaseProvider {
             windows.push({
                 id: windowDef.id,
                 label: windowDef.label,
+                shortLabel: windowDef.shortLabel,
                 used: limit.currentValue ?? null,
                 limit: limit.usage ?? null,
                 utilization: (limit.percentage ?? 0) / 100,
@@ -142,7 +145,7 @@ export class GlmProvider extends BaseProvider {
             });
         }
 
-        const order = {[WINDOW_FIVE_HOUR]: 0, [WINDOW_WEEKLY]: 1, [WINDOW_MONTHLY]: 2};
+        const order = {[WIN_FIVE_HOUR]: 0, [WIN_WEEKLY]: 1, [WIN_MONTHLY]: 2};
         windows.sort((a, b) => (order[a.id] ?? 99) - (order[b.id] ?? 99));
 
         return {
@@ -158,11 +161,11 @@ export class GlmProvider extends BaseProvider {
     _identifyWindow(limit) {
         const {type, unit, number} = limit;
         if (type === 'TOKENS_LIMIT' && unit === 3 && number === 5)
-            return {id: WINDOW_FIVE_HOUR, label: '5-Hour'};
+            return {id: WIN_FIVE_HOUR, label: '5-Hour', shortLabel: '5h'};
         if (type === 'TOKENS_LIMIT' && unit === 6 && number === 1)
-            return {id: WINDOW_WEEKLY, label: '7-Day'};
+            return {id: WIN_WEEKLY, label: '7-Day', shortLabel: '7d'};
         if (type === 'TIME_LIMIT' && unit === 5 && number === 1)
-            return {id: WINDOW_MONTHLY, label: '30-Day'};
+            return {id: WIN_MONTHLY, label: '30-Day', shortLabel: '30d'};
         return null;
     }
 }

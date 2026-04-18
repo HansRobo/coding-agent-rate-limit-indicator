@@ -44,8 +44,7 @@ async function buildModern() {
     console.log('Building GNOME 45+ (modern ESM)…');
     const out = join(DIST_DIR, 'gnome45');
 
-    await mkdir(join(out, 'providers'), { recursive: true });
-    await mkdir(join(out, 'schemas'),   { recursive: true });
+    await mkdir(join(out, 'schemas'), { recursive: true });
 
     const rootJs = [
         'extension.js', 'prefs.js', 'constants.js',
@@ -55,10 +54,7 @@ async function buildModern() {
         await cp(join(SRC_DIR, f), join(out, f));
     }
 
-    const providerJs = ['base.js', 'claude.js', 'codex.js', 'gemini.js', 'glm.js'];
-    for (const f of providerJs) {
-        await cp(join(SRC_DIR, 'providers', f), join(out, 'providers', f));
-    }
+    await cp(join(SRC_DIR, 'providers'), join(out, 'providers'), { recursive: true });
 
     await cp(join(SRC_DIR, 'stylesheet.css'), join(out, 'stylesheet.css'));
     await cp(join(SRC_DIR, 'metadata.json'),  join(out, 'metadata.json'));

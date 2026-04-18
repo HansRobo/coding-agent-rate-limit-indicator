@@ -569,11 +569,14 @@ class RateLimitIndicator extends PanelMenu.Button {
         headerRow.add_child(nameLabel);
 
         if (providerClass) {
-            headerRow.add_child(new St.Label({
-                style_class: `m3-provider-pill m3-provider-pill-${providerClass.cssClass}`,
+            const pill = new St.Label({
+                style_class: 'm3-provider-pill',
                 text: providerClass.displayName,
                 y_align: Clutter.ActorAlign.CENTER,
-            }));
+            });
+            if (providerClass.brandColor)
+                pill.set_style(`background-color: ${providerClass.brandColor};`);
+            headerRow.add_child(pill);
         }
 
         if (state?.lastUpdated) {
@@ -623,10 +626,10 @@ class RateLimitIndicator extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
 
-        // Short label: "5h", "7d", "wk", etc.
+        // Short label: "5h", "7d", "1°", etc.
         const labelWidget = new St.Label({
             style_class: 'm3-window-label',
-            text: this._getShortWindowLabel(window.label),
+            text: window.shortLabel ?? window.label.substring(0, 3),
             y_align: Clutter.ActorAlign.CENTER,
         });
         labelWidget.set_width(24);
@@ -679,17 +682,6 @@ class RateLimitIndicator extends PanelMenu.Button {
         if (utilization >= THRESHOLD_MEDIUM) return 'usage-high';
         if (utilization >= THRESHOLD_LOW) return 'usage-medium';
         return 'usage-low';
-    }
-
-    _getShortWindowLabel(label) {
-        const lower = label.toLowerCase();
-        const match = label.match(/(\d+)/);
-        if (lower.includes('hour')) return match ? `${match[1]}h` : label.substring(0, 2);
-        if (lower.includes('day')) return match ? `${match[1]}d` : label.substring(0, 2);
-        if (lower.includes('week')) return '7d';
-        if (lower.includes('month')) return '30d';
-        if (lower.includes('primary')) return '1°';
-        return label.substring(0, 3);
     }
 
     _formatResetTime(resetDate) {

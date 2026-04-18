@@ -6,19 +6,17 @@ import Gio from 'gi://Gio';
 import Soup from 'gi://Soup?version=3.0';
 
 import {BaseProvider} from './base.js';
-import {
-    PROVIDER_CODEX,
-    CODEX_API_BASE,
-    CODEX_USAGE_ENDPOINT,
-    CODEX_REFERER,
-    CODEX_AUTH_TOKEN_ENDPOINT,
-    WINDOW_PRIMARY,
-    WINDOW_WEEKLY,
-} from '../constants.js';
+
+const API_BASE = 'https://chatgpt.com';
+const USAGE_ENDPOINT = '/backend-api/wham/usage';
+const REFERER = 'https://chatgpt.com/codex/settings/usage';
+const AUTH_TOKEN_ENDPOINT = 'https://auth.openai.com/oauth/token';
+const WIN_PRIMARY = 'primary';
+const WIN_WEEKLY = 'weekly';
 
 export class CodexProvider extends BaseProvider {
     static get id() {
-        return PROVIDER_CODEX;
+        return 'codex';
     }
 
     static get displayName() {
@@ -41,6 +39,28 @@ export class CodexProvider extends BaseProvider {
 
     static get requiresManualToken() {
         return false;
+    }
+
+    static get brandColor() {
+        return 'rgba(16, 163, 127, 0.40)';
+    }
+
+    static detectCredentials() {
+        const found = [];
+        const homeDir = GLib.get_home_dir();
+
+        const defaultPath = GLib.build_filenamev([homeDir, '.codex', 'auth.json']);
+        if (GLib.file_test(defaultPath, GLib.FileTest.EXISTS))
+            found.push({name: 'Default', credentialPath: ''});
+
+        const codexHome = GLib.getenv('CODEX_HOME');
+        if (codexHome) {
+            const envPath = GLib.build_filenamev([codexHome, 'auth.json']);
+            if (GLib.file_test(envPath, GLib.FileTest.EXISTS) && envPath !== defaultPath)
+                found.push({name: 'Custom', credentialPath: envPath});
+        }
+
+        return found;
     }
 
     static getDefaultConfig() {
@@ -187,7 +207,7 @@ export class CodexProvider extends BaseProvider {
                         )
                     );
 
-                    const msg = Soup.Message.new('POST', CODEX_AUTH_TOKEN_ENDPOINT);
+                    const msg = Soup.Message.new('POST', AUTH_TOKEN_ENDPOINT);
                     msg.request_headers.append('Content-Type', 'application/x-www-form-urlencoded');
                     msg.set_request_body_from_bytes('application/x-www-form-urlencoded', body);
 
@@ -267,13 +287,13 @@ export class CodexProvider extends BaseProvider {
 
     _callUsageApi(normalizedToken, session) {
         return new Promise((resolve, reject) => {
-            const url = `${CODEX_API_BASE}${CODEX_USAGE_ENDPOINT}`;
+            const url = `${API_BASE}${USAGE_ENDPOINT}`;
             const message = Soup.Message.new('GET', url);
-            const path = CODEX_USAGE_ENDPOINT;
+            const path = USAGE_ENDPOINT;
 
             message.request_headers.append('Accept', 'application/json');
             message.request_headers.append('Authorization', `Bearer ${normalizedToken}`);
-            message.request_headers.append('Referer', CODEX_REFERER);
+            message.request_headers.append('Referer', REFERER);
             message.request_headers.append('oai-language', 'en-US');
             message.request_headers.append('x-openai-target-path', path);
             message.request_headers.append('x-openai-target-route', path);
@@ -332,19 +352,19 @@ export class CodexProvider extends BaseProvider {
         const primary = this._extractWindow(
             rateLimit,
             ['primary_window', 'primary', 'five_hour', '5h'],
-            WINDOW_PRIMARY,
+            WIN_PRIMARY,
             '5-Hour'
         );
-        if (primary) windows.push(primary);
+        if (primary) windows.push({...primary, shortLabel: '5h'});
 
         // Attempt to extract secondary (weekly) window
         const weekly = this._extractWindow(
             rateLimit,
             ['secondary_window', 'secondary', 'weekly', 'seven_day', '7d'],
-            WINDOW_WEEKLY,
+            WIN_WEEKLY,
             '7-Day'
         );
-        if (weekly) windows.push(weekly);
+        if (weekly) windows.push({...weekly, shortLabel: '7d'});
 
         // If no structured windows found, try flat keys at top level
         if (windows.length === 0) {
@@ -430,7 +450,7 @@ export class CodexProvider extends BaseProvider {
      */
     _extractFlatWindow(obj) {
         if (!obj || typeof obj !== 'object') return null;
-        const parsed = this._parseWindowObject(obj, WINDOW_PRIMARY, 'Usage');
+        const parsed = this._parseWindowObject(obj, WIN_PRIMARY, 'Usage');
         // Only return if we found meaningful data
         if (parsed.used !== null || parsed.limit !== null || parsed.utilization > 0) {
             return parsed;
