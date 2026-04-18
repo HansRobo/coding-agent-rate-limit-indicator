@@ -23,6 +23,7 @@ import {
     updateAccount,
     removeAccount,
     setAccountVisibility,
+    moveAccount,
 } from './accounts.js';
 
 import {storeToken, clearToken} from './secret.js';
@@ -203,7 +204,7 @@ export default class RateLimitPreferences extends ExtensionPreferences {
         const providers = getProviderList();
         const providerMap = new Map(providers.map(p => [p.id, p]));
 
-        for (const account of accounts) {
+        for (const [index, account] of accounts.entries()) {
             const provider = providerMap.get(account.provider);
             const providerName = provider ? provider.displayName : account.provider;
 
@@ -211,6 +212,9 @@ export default class RateLimitPreferences extends ExtensionPreferences {
                 title: account.name || providerName,
                 subtitle: providerName,
             });
+
+            expander.add_prefix(this._createReorderButton('go-up-symbolic', 'Move up', index > 0, () => moveAccount(settings, account.id, 'up')));
+            expander.add_prefix(this._createReorderButton('go-down-symbolic', 'Move down', index < accounts.length - 1, () => moveAccount(settings, account.id, 'down')));
 
             // Visibility toggle
             const visibleSwitch = new Gtk.Switch({
@@ -289,6 +293,18 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             group.add(expander);
             this._accountRows.push(expander);
         }
+    }
+
+    _createReorderButton(iconName, tooltipText, sensitive, onClick) {
+        const button = new Gtk.Button({
+            icon_name: iconName,
+            valign: Gtk.Align.CENTER,
+            sensitive,
+            tooltip_text: tooltipText,
+        });
+        button.add_css_class('flat');
+        button.connect('clicked', onClick);
+        return button;
     }
 
     _createConfigRow(field, provider, account, settings) {

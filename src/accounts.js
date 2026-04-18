@@ -139,6 +139,26 @@ export function removeAccount(settings, accountId) {
 }
 
 /**
+ * Move an account up or down in the ordered list.
+ * @param {Gio.Settings} settings
+ * @param {string} accountId
+ * @param {'up'|'down'} direction
+ * @returns {boolean} true if moved, false if at edge or not found
+ */
+export function moveAccount(settings, accountId, direction) {
+    const accounts = loadAccounts(settings);
+    const idx = accounts.findIndex(a => a.id === accountId);
+    if (idx === -1) return false;
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= accounts.length) return false;
+
+    [accounts[idx], accounts[targetIdx]] = [accounts[targetIdx], accounts[idx]];
+    saveAccounts(settings, accounts);
+    return true;
+}
+
+/**
  * Toggle account visibility.
  * @param {Gio.Settings} settings
  * @param {string} accountId
