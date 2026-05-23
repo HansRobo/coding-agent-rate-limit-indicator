@@ -7,15 +7,15 @@ A GNOME Shell extension that monitors rate limit usage for multiple coding agent
 
 ## Features
 
-- **Multi-provider support**: Monitor Claude Code (Anthropic), Codex (OpenAI), Gemini CLI / Antigravity (Google), GLM (z.ai), and more
+- **Multi-provider support**: Monitor Claude Code (Anthropic), Codex (OpenAI), Antigravity CLI (Google), GLM (z.ai), and more
 - **Multi-account**: Configure multiple accounts per provider
 - **Top bar indicator**: Concise usage display with text, progress bar, or both; SVG provider icons fetched from CDN and cached locally
 - **Detailed popup menu**: Per-account breakdown with progress bars, reset timers, and usage percentages; theme-adaptive colors for light/dark GNOME Shell themes
 - **Color-coded usage**: Green → Yellow → Orange → Red as usage increases
 - **Extensible architecture**: Clean provider pattern makes it easy to add new services
 - **Secure credential storage**: Tokens stored in GNOME Keyring (Secret Service)
-- **Auto-detect credentials**: Claude Code, Codex, and Gemini read OAuth tokens from local config automatically
-- **Automatic token refresh**: OAuth tokens are refreshed automatically when expired (Claude, Codex, Gemini)
+- **Auto-detect credentials**: Claude Code, Codex, and Antigravity read OAuth tokens from local config automatically
+- **Automatic token refresh**: OAuth tokens are refreshed automatically when expired (Claude, Codex, Antigravity)
 - **Rate limit resilience**: 429 responses trigger per-account backoff using `Retry-After` header
 - **Proxy support**: Optional HTTP proxy for all API requests
 
@@ -25,12 +25,11 @@ A GNOME Shell extension that monitors rate limit usage for multiple coding agent
 |----------|-----------|-----|
 | **Claude Code** (Anthropic) | Auto-detect from `~/.claude/.credentials.json` | Anthropic OAuth Usage API |
 | **Codex** (OpenAI/ChatGPT) | Auto-detect from `~/.codex/auth.json` | ChatGPT Internal API |
-| **Gemini** (Gemini CLI / Antigravity) | Auto-detect from `~/.gemini/oauth_creds.json` | Google Code Assist API |
+| **Antigravity** (Antigravity CLI) | Auto-detect from `~/.gemini/antigravity-cli/oauth_creds.json` | Google Code Assist API |
 | **GLM** (z.ai) | Manual API key | z.ai Monitor API |
 
 Notes:
-- The Gemini provider uses the Gemini CLI OAuth/Code Assist backend. Antigravity works when it shares that backend state.
-- Standalone Antigravity secure-storage extraction is not implemented in this first pass.
+- The Antigravity provider uses the Antigravity CLI OAuth/Code Assist backend.
 
 ### Adding a new provider
 
@@ -108,13 +107,13 @@ gnome-extensions prefs coding-agent-rate-limit-indicator@github.com
 4. Enter your z.ai API key in the token field
    - Log in to [z.ai](https://z.ai) and generate an API key from your account settings
 
-#### Gemini (Gemini CLI / Antigravity)
+#### Antigravity (Antigravity CLI)
 
 1. Open extension preferences → Accounts tab
-2. Click "Add Gemini account"
+2. Click "Add Antigravity account"
 3. Enter a display name
-4. The extension auto-detects your OAuth token from `~/.gemini/oauth_creds.json`
-5. If your Gemini account requires a Google Cloud project, set it in the account settings
+4. The extension auto-detects your OAuth token from `~/.gemini/antigravity-cli/oauth_creds.json`
+5. If your Antigravity account requires a Google Cloud project, set it in the account settings
 6. Choose the per-account panel quota strategy:
    - `Most constrained`: show the tightest quota bucket in the panel
    - `Pooled first`: prefer the pooled bucket when available
@@ -134,7 +133,7 @@ gnome-extensions prefs coding-agent-rate-limit-indicator@github.com
 │   ├── base.js           # Base provider interface
 │   ├── claude.js         # Claude Code (Anthropic) provider
 │   ├── codex.js          # Codex (OpenAI) provider
-│   ├── gemini.js         # Gemini CLI / Antigravity (Google) provider
+│   ├── antigravity.js    # Antigravity CLI (Google) provider
 │   └── glm.js            # GLM (z.ai) provider
 ├── schemas/              # GSettings schema
 ├── stylesheet.css        # Extension styles

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-A GNOME Shell extension that monitors rate limit usage for multiple coding agent services (Claude Code, Codex, Gemini, etc.) in the top bar. Uses a provider pattern for extensibility.
+A GNOME Shell extension that monitors rate limit usage for multiple coding agent services (Claude Code, Codex, Antigravity, etc.) in the top bar. Uses a provider pattern for extensibility.
 
 ## Language Policy
 

@@ -1,5 +1,5 @@
-// Gemini / Antigravity provider.
-// Fetches quota from the Google Code Assist API used by Gemini CLI.
+// Antigravity provider.
+// Fetches quota from the Google Code Assist API used by Antigravity CLI.
 
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
@@ -17,23 +17,23 @@ const PANEL_QUOTA_POOLED_ONLY = 'pooled_only';
 
 const USER_TIER_FREE = 'free-tier';
 const USER_TIER_LEGACY = 'legacy-tier';
-const GEMINI_USER_AGENT = 'coding-agent-rate-limit-indicator/1.0.0';
+const ANTIGRAVITY_USER_AGENT = 'coding-agent-rate-limit-indicator/1.0.0';
 
-export class GeminiProvider extends BaseProvider {
+export class AntigravityProvider extends BaseProvider {
     static get id() {
-        return 'gemini';
+        return 'antigravity';
     }
 
     static get displayName() {
-        return 'Gemini';
+        return 'Antigravity';
     }
 
     static get shortLabel() {
-        return 'GM';
+        return 'AG';
     }
 
     static getIconUrl(_style) {
-        return 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/googlegemini.svg';
+        return 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/google.svg';
     }
 
     static get supportsAutoDetect() {
@@ -62,7 +62,7 @@ export class GeminiProvider extends BaseProvider {
                 key: 'credentialPath',
                 label: 'Credentials file path (empty for default)',
                 type: 'string',
-                placeholder: '~/.gemini/oauth_creds.json',
+                placeholder: '~/.gemini/antigravity-cli/oauth_creds.json',
             },
             {
                 key: 'projectId',
@@ -91,7 +91,7 @@ export class GeminiProvider extends BaseProvider {
             return customPath;
         }
 
-        return GLib.build_filenamev([GLib.get_home_dir(), '.gemini', 'oauth_creds.json']);
+        return GLib.build_filenamev([GLib.get_home_dir(), '.gemini', 'antigravity-cli', 'oauth_creds.json']);
     }
 
     _resolveConfiguredProjectId(account) {
@@ -121,7 +121,7 @@ export class GeminiProvider extends BaseProvider {
                     const json = JSON.parse(decoder.decode(contents));
 
                     if (!json?.access_token) {
-                        reject(new Error('No access token found in Gemini credentials file'));
+                        reject(new Error('No access token found in Antigravity credentials file'));
                         return;
                     }
 
@@ -133,19 +133,19 @@ export class GeminiProvider extends BaseProvider {
                         _filePath: filePath,
                     });
                 } catch (e) {
-                    reject(new Error(`Failed to parse Gemini credentials: ${e.message}`));
+                    reject(new Error(`Failed to parse Antigravity credentials: ${e.message}`));
                 }
             });
         });
     }
 
-    _loadGeminiCliOAuthCreds() {
-        if (this._geminiCliCreds)
-            return this._geminiCliCreds;
+    _loadAntigravityCliOAuthCreds() {
+        if (this._antigravityCliCreds)
+            return this._antigravityCliCreds;
 
-        const binPath = GLib.find_program_in_path('gemini');
+        const binPath = GLib.find_program_in_path('agy');
         if (!binPath)
-            throw new Error('Gemini CLI not found. Install it with: npm install -g @google/gemini-cli');
+            throw new Error('Antigravity CLI not found. Install it with: npm install -g @google/antigravity-cli');
 
         const binFile = Gio.File.new_for_path(binPath);
         const symlinkInfo = binFile.query_info(
@@ -194,24 +194,24 @@ export class GeminiProvider extends BaseProvider {
 
         if (!clientId || !clientSecret)
             throw new Error(
-                'Could not find Gemini OAuth credentials in @google/gemini-cli bundle. ' +
-                'Try updating it: npm install -g @google/gemini-cli'
+                'Could not find Antigravity OAuth credentials in @google/antigravity-cli bundle. ' +
+                'Try updating it: npm install -g @google/antigravity-cli'
             );
 
-        this._geminiCliCreds = {clientId, clientSecret};
-        return this._geminiCliCreds;
+        this._antigravityCliCreds = {clientId, clientSecret};
+        return this._antigravityCliCreds;
     }
 
     _refreshAccessToken(creds, session) {
         return new Promise((resolve, reject) => {
             if (!creds.refreshToken) {
-                reject(new Error('No refresh_token found in Gemini credentials file'));
+                reject(new Error('No refresh_token found in Antigravity credentials file'));
                 return;
             }
 
             let oauthCreds;
             try {
-                oauthCreds = this._loadGeminiCliOAuthCreds();
+                oauthCreds = this._loadAntigravityCliOAuthCreds();
             } catch (e) {
                 reject(e);
                 return;
@@ -238,14 +238,14 @@ export class GeminiProvider extends BaseProvider {
                     if (statusCode !== 200) {
                         reject(new Error(this._extractErrorMessage(
                             text,
-                            `Gemini token refresh failed (HTTP ${statusCode})`
+                            `Antigravity token refresh failed (HTTP ${statusCode})`
                         )));
                         return;
                     }
 
                     const resp = text ? JSON.parse(text) : {};
                     if (!resp.access_token) {
-                        reject(new Error('Gemini token refresh response missing access_token'));
+                        reject(new Error('Antigravity token refresh response missing access_token'));
                         return;
                     }
 
@@ -268,7 +268,7 @@ export class GeminiProvider extends BaseProvider {
 
                     resolve(resp.access_token);
                 } catch (e) {
-                    reject(new Error(`Gemini token refresh failed: ${e.message}`));
+                    reject(new Error(`Antigravity token refresh failed: ${e.message}`));
                 }
             });
         });
@@ -296,7 +296,7 @@ export class GeminiProvider extends BaseProvider {
 
         if (!token) {
             throw new Error(
-                'No authentication token available. Install Gemini CLI or set a token override in Settings.'
+                'No authentication token available. Install Antigravity CLI or set a token override in Settings.'
             );
         }
 
@@ -330,7 +330,7 @@ export class GeminiProvider extends BaseProvider {
                 url,
                 {
                     project: projectId,
-                    userAgent: GEMINI_USER_AGENT,
+                    userAgent: ANTIGRAVITY_USER_AGENT,
                 },
                 accessToken
             );
@@ -428,6 +428,7 @@ export class GeminiProvider extends BaseProvider {
     }
 
     _buildClientMetadata(projectId) {
+        // Keep 'GEMINI' as pluginType for Google Cloud Code Assist API compatibility
         const metadata = {
             ideType: 'IDE_UNSPECIFIED',
             platform: 'PLATFORM_UNSPECIFIED',
@@ -442,7 +443,7 @@ export class GeminiProvider extends BaseProvider {
 
     _validateLoadCodeAssistResponse(loadRes) {
         if (!loadRes)
-            throw new Error('Gemini setup returned an empty response');
+            throw new Error('Antigravity setup returned an empty response');
 
         if (!loadRes.currentTier && Array.isArray(loadRes.ineligibleTiers)) {
             const validationTier = loadRes.ineligibleTiers.find(tier =>
@@ -453,7 +454,7 @@ export class GeminiProvider extends BaseProvider {
             if (validationTier) {
                 const description = validationTier.reasonMessage ?? 'Account validation required';
                 throw new Error(
-                    `Gemini account validation required: ${description}. Visit ${validationTier.validationUrl} and try again.`
+                    `Antigravity account validation required: ${description}. Visit ${validationTier.validationUrl} and try again.`
                 );
             }
         }
@@ -467,11 +468,11 @@ export class GeminiProvider extends BaseProvider {
             : [];
 
         if (reasons.length > 0) {
-            throw new Error(`Gemini account is not eligible: ${reasons.join('; ')}`);
+            throw new Error(`Antigravity account is not eligible: ${reasons.join('; ')}`);
         }
 
         throw new Error(
-            'Gemini requires a Google Cloud project ID for this account. Set the project ID in Settings or export GOOGLE_CLOUD_PROJECT.'
+            'Antigravity requires a Google Cloud project ID for this account. Set the project ID in Settings or export GOOGLE_CLOUD_PROJECT.'
         );
     }
 
@@ -519,7 +520,7 @@ export class GeminiProvider extends BaseProvider {
 
                     if (statusCode === 401 || statusCode === 403) {
                         reject(this._createHttpError(
-                            `Gemini auth failed (HTTP ${statusCode})`,
+                            `Antigravity auth failed (HTTP ${statusCode})`,
                             message
                         ));
                         return;
@@ -527,7 +528,7 @@ export class GeminiProvider extends BaseProvider {
 
                     if (statusCode === 429) {
                         reject(this._createHttpError(
-                            this._extractErrorMessage(text, 'Gemini rate limited (HTTP 429)'),
+                            this._extractErrorMessage(text, 'Antigravity rate limited (HTTP 429)'),
                             message
                         ));
                         return;
@@ -535,7 +536,7 @@ export class GeminiProvider extends BaseProvider {
 
                     if (statusCode < 200 || statusCode >= 300) {
                         reject(this._createHttpError(
-                            this._extractErrorMessage(text, `Gemini API error (HTTP ${statusCode})`),
+                            this._extractErrorMessage(text, `Antigravity API error (HTTP ${statusCode})`),
                             message
                         ));
                         return;
@@ -543,7 +544,7 @@ export class GeminiProvider extends BaseProvider {
 
                     resolve(text ? JSON.parse(text) : {});
                 } catch (e) {
-                    reject(new Error(`Failed to fetch Gemini usage: ${e.message}`));
+                    reject(new Error(`Failed to fetch Antigravity usage: ${e.message}`));
                 }
             });
         });
@@ -601,7 +602,7 @@ export class GeminiProvider extends BaseProvider {
         const label = isPrimary ? 'Primary' : this._labelForModel(bucket.modelId);
         const id = isPrimary
             ? WIN_PRIMARY
-            : `gemini_model_${this._slugify(bucket.modelId)}`;
+            : `antigravity_model_${this._slugify(bucket.modelId)}`;
         const shortLabel = isPrimary ? '1°' : label.substring(0, 3);
 
         return {
@@ -646,7 +647,7 @@ export class GeminiProvider extends BaseProvider {
             .pop();
         const parts = bareModel.split(/[-_]/).filter(Boolean);
         const filtered = parts.filter(part =>
-            !/^gemini$/i.test(part) &&
+            !/^(gemini|antigravity)$/i.test(part) &&
             !/^\d+(\.\d+)?$/.test(part)
         );
         const words = filtered.length > 0 ? filtered : parts;

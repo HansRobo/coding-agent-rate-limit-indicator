@@ -4,7 +4,7 @@
 
 import {ClaudeProvider} from './providers/claude.js';
 import {CodexProvider} from './providers/codex.js';
-import {GeminiProvider} from './providers/gemini.js';
+import {AntigravityProvider} from './providers/antigravity.js';
 import {GlmProvider} from './providers/glm.js';
 
 // Map of provider ID -> provider class
@@ -66,5 +66,5 @@ export function createProviderInstance(providerId) {
 }
 
 // --- Register built-in providers ---
-const BUILTINS = [ClaudeProvider, CodexProvider, GeminiProvider, GlmProvider];
+const BUILTINS = [ClaudeProvider, CodexProvider, AntigravityProvider, GlmProvider];
 BUILTINS.forEach(registerProvider);
