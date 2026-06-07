@@ -393,10 +393,44 @@ export default class RateLimitPreferences extends ExtensionPreferences {
         let tokenEntry = null;
         if (provider.requiresManualToken) {
             tokenEntry = new Gtk.PasswordEntry({
-                placeholder_text: provider.tokenFieldLabel,
+                placeholder_text: provider.tokenFieldLabel || 'Token',
                 show_peek_icon: true,
             });
             box.append(tokenEntry);
+            
+            // Add Browser Login button if supported
+            if (provider.supportsBrowserLogin) {
+                const loginButton = new Gtk.Button({
+                    label: `Login with ${provider.displayName}`,
+                    margin_top: 4,
+                });
+                loginButton.add_css_class('suggested-action');
+                loginButton.connect('clicked', () => {
+                    loginButton.set_label('Waiting for browser authentication...');
+                    loginButton.set_sensitive(false);
+                    
+                    provider.loginWithBrowser()
+                        .then(token => {
+                            if (token) {
+                                tokenEntry.set_text(token);
+                                loginButton.set_label('Authentication Successful');
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            loginButton.set_label('Authentication Failed (Try Again)');
+                            loginButton.set_sensitive(true);
+                            // Show error in token entry temporarily
+                            const old = tokenEntry.get_text();
+                            tokenEntry.set_text('Error: ' + err.message);
+                            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 3000, () => {
+                                tokenEntry.set_text(old);
+                                return GLib.SOURCE_REMOVE;
+                            });
+                        });
+                });
+                box.append(loginButton);
+            }
         }
 
         dialog.set_extra_child(box);

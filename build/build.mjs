@@ -49,6 +49,7 @@ async function buildModern() {
     const rootJs = [
         'extension.js', 'prefs.js', 'constants.js',
         'accounts.js', 'secret.js', 'iconCache.js', 'providerRegistry.js',
+        'oauth-login.js',
     ];
     for (const f of rootJs) {
         await cp(join(SRC_DIR, f), join(out, f));
@@ -97,6 +98,7 @@ async function buildLegacy() {
     // Static assets
     await cp(join(SRC_DIR, 'stylesheet.css'), join(out, 'stylesheet.css'));
     await cp(join(SRC_DIR, 'schemas'),         join(out, 'schemas'), { recursive: true });
+    await cp(join(SRC_DIR, 'oauth-login.js'),  join(out, 'oauth-login.js'));
 
     // Patch metadata.json to declare legacy shell support
     const meta = JSON.parse(await readFile(join(SRC_DIR, 'metadata.json'), 'utf8'));

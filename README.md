@@ -25,11 +25,11 @@ A GNOME Shell extension that monitors rate limit usage for multiple coding agent
 |----------|-----------|-----|
 | **Claude Code** (Anthropic) | Auto-detect from `~/.claude/.credentials.json` | Anthropic OAuth Usage API |
 | **Codex** (OpenAI/ChatGPT) | Auto-detect from `~/.codex/auth.json` | ChatGPT Internal API |
-| **Antigravity** (Antigravity CLI) | Auto-detect from `~/.gemini/antigravity-cli/oauth_creds.json` | Google Code Assist API |
+| **Antigravity** | Native Browser OAuth | Google Cloud Code API |
 | **GLM** (z.ai) | Manual API key | z.ai Monitor API |
 
 Notes:
-- The Antigravity provider uses the Antigravity CLI OAuth/Code Assist backend.
+- The Antigravity provider uses the Google Code Assist backend.
 
 ### Adding a new provider
 
@@ -107,13 +107,13 @@ gnome-extensions prefs coding-agent-rate-limit-indicator@github.com
 4. Enter your z.ai API key in the token field
    - Log in to [z.ai](https://z.ai) and generate an API key from your account settings
 
-#### Antigravity (Antigravity CLI)
+#### Antigravity
 
 1. Open extension preferences → Accounts tab
 2. Click "Add Antigravity account"
-3. Enter a display name
-4. The extension auto-detects your OAuth token from `~/.gemini/antigravity-cli/oauth_creds.json`
-5. If your Antigravity account requires a Google Cloud project, set it in the account settings
+3. Click the **"Login with Antigravity"** button in the dialog.
+4. Your default browser will open. Authenticate with your Google account.
+5. Once authenticated, the OAuth Refresh Token will be automatically filled in.
 6. Choose the per-account panel quota strategy:
    - `Most constrained`: show the tightest quota bucket in the panel
    - `Pooled first`: prefer the pooled bucket when available

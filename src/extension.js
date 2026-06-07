@@ -404,7 +404,7 @@ class RateLimitIndicator extends PanelMenu.Button {
                 if (!iconWidget) {
                     const fallback = providerClass
                         ? providerClass.shortLabel
-                        : account.provider.toUpperCase().substring(0, 2);
+                        : String(account.provider).toUpperCase().substring(0, 2);
                     iconWidget = new St.Label({
                         style_class: 'panel-rate-limit-label',
                         text: fallback,
@@ -629,7 +629,7 @@ class RateLimitIndicator extends PanelMenu.Button {
         // Short label: "5h", "7d", "1°", etc.
         const labelWidget = new St.Label({
             style_class: 'm3-window-label',
-            text: window.shortLabel ?? window.label.substring(0, 3),
+            text: window.shortLabel ?? (window.label ? String(window.label).substring(0, 3) : '??'),
             y_align: Clutter.ActorAlign.CENTER,
         });
         labelWidget.set_width(24);
@@ -645,13 +645,13 @@ class RateLimitIndicator extends PanelMenu.Button {
         const barFill = new St.Widget({
             style_class: `m3-bar-fill ${this._getUsageColorClass(window.utilization)}`,
         });
-        barFill.set_width(Math.max(0, Math.min(BAR_WIDTH, Math.round(window.utilization * BAR_WIDTH))));
+        barFill.set_width(Math.max(0, Math.min(BAR_WIDTH, Math.round((window.utilization || 0) * BAR_WIDTH))));
         barFill.set_height(BAR_HEIGHT);
         barContainer.add_child(barFill);
         row.add_child(barContainer);
 
         // Percentage
-        const pct = Math.round(window.utilization * 100);
+        const pct = Math.round((window.utilization || 0) * 100);
         const pctLabel = new St.Label({
             style_class: 'm3-pct-label',
             text: `${pct}%`,

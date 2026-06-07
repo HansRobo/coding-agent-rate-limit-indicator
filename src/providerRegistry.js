@@ -49,6 +49,8 @@ export function getProviderList() {
         supportsAutoDetect: p.supportsAutoDetect,
         requiresManualToken: p.requiresManualToken,
         tokenFieldLabel: p.tokenFieldLabel,
+        supportsBrowserLogin: p.supportsBrowserLogin || false,
+        loginWithBrowser: p.loginWithBrowser ? p.loginWithBrowser.bind(p) : null,
         configFields: p.getConfigFields(),
         defaultConfig: p.getDefaultConfig(),
     }));

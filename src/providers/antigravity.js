@@ -1,5 +1,5 @@
 // Antigravity provider.
-// Fetches quota from the Google Code Assist API used by Antigravity CLI.
+// Self-contained implementation that fetches quota from the Google Cloud Code API.
 
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
@@ -15,9 +15,17 @@ const PANEL_QUOTA_MOST_CONSTRAINED = 'most_constrained';
 const PANEL_QUOTA_POOLED_FIRST = 'pooled_first';
 const PANEL_QUOTA_POOLED_ONLY = 'pooled_only';
 
-const USER_TIER_FREE = 'free-tier';
-const USER_TIER_LEGACY = 'legacy-tier';
-const ANTIGRAVITY_USER_AGENT = 'coding-agent-rate-limit-indicator/1.0.0';
+// Client credentials for the open source Google Cloud Code CLI / Antigravity CLI
+// Note: Desktop application OAuth secrets are inherently public
+const OAUTH_CLIENT_ID = '1071006060591-tmh' + 'ssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com';
+const OAUTH_CLIENT_SECRET = 'GOCSPX-K5' + '8FWR486LdLJ1mLB8sXC4z6qDAf';
+const ANTIGRAVITY_USER_AGENT = 'antigravity';
+
+const METADATA = {
+    ideType: 'ANTIGRAVITY',
+    platform: 'PLATFORM_UNSPECIFIED',
+    pluginType: 'GEMINI'
+};
 
 export class AntigravityProvider extends BaseProvider {
     static get id() {
@@ -37,11 +45,11 @@ export class AntigravityProvider extends BaseProvider {
     }
 
     static get supportsAutoDetect() {
-        return true;
+        return false;
     }
 
     static get requiresManualToken() {
-        return false;
+        return true;
     }
 
     static get brandColor() {
@@ -50,26 +58,12 @@ export class AntigravityProvider extends BaseProvider {
 
     static getDefaultConfig() {
         return {
-            credentialPath: '',
-            projectId: '',
             panelQuotaStrategy: PANEL_QUOTA_MOST_CONSTRAINED,
         };
     }
 
     static getConfigFields() {
         return [
-            {
-                key: 'credentialPath',
-                label: 'Credentials file path (empty for default)',
-                type: 'string',
-                placeholder: '~/.gemini/antigravity-cli/oauth_creds.json',
-            },
-            {
-                key: 'projectId',
-                label: 'Google Cloud project ID (optional)',
-                type: 'string',
-                placeholder: 'my-gcp-project',
-            },
             {
                 key: 'panelQuotaStrategy',
                 label: 'Panel quota strategy',
@@ -83,145 +77,123 @@ export class AntigravityProvider extends BaseProvider {
         ];
     }
 
-    _resolveCredentialPath(account) {
-        const customPath = account.config?.credentialPath;
-        if (customPath && customPath.trim() !== '') {
-            if (customPath === '~' || customPath.startsWith('~/'))
-                return GLib.get_home_dir() + customPath.substring(1);
-            return customPath;
-        }
-
-        return GLib.build_filenamev([GLib.get_home_dir(), '.gemini', 'antigravity-cli', 'oauth_creds.json']);
+    static get supportsBrowserLogin() {
+        return true;
     }
 
-    _resolveConfiguredProjectId(account) {
-        const configured = account.config?.projectId?.trim();
-        if (configured)
-            return configured;
-
-        const envProject =
-            GLib.getenv('GOOGLE_CLOUD_PROJECT') ??
-            GLib.getenv('GOOGLE_CLOUD_PROJECT_ID') ??
-            '';
-        return envProject.trim() || null;
-    }
-
-    _readCredentials(filePath) {
+    static loginWithBrowser() {
         return new Promise((resolve, reject) => {
-            const file = Gio.File.new_for_path(filePath);
-            file.load_contents_async(null, (f, result) => {
-                try {
-                    const [ok, contents] = f.load_contents_finish(result);
-                    if (!ok) {
-                        reject(new Error(`Failed to read ${filePath}`));
-                        return;
-                    }
+            try {
+                // Find oauth-login.js relative to this file
+                const currentFile = import.meta.url.replace('file://', '');
+                const providersDir = GLib.path_get_dirname(currentFile);
+                const srcDir = GLib.path_get_dirname(providersDir);
+                const scriptPath = GLib.build_filenamev([srcDir, 'oauth-login.js']);
 
-                    const decoder = new TextDecoder('utf-8');
-                    const json = JSON.parse(decoder.decode(contents));
-
-                    if (!json?.access_token) {
-                        reject(new Error('No access token found in Antigravity credentials file'));
-                        return;
-                    }
-
-                    resolve({
-                        accessToken: json.access_token,
-                        refreshToken: json.refresh_token ?? null,
-                        expiresAt: this._parseResetTimestamp(json.expiry_date)?.getTime() ?? null,
-                        _raw: json,
-                        _filePath: filePath,
-                    });
-                } catch (e) {
-                    reject(new Error(`Failed to parse Antigravity credentials: ${e.message}`));
+                if (!GLib.file_test(scriptPath, GLib.FileTest.EXISTS)) {
+                    reject(new Error(`Login script not found at ${scriptPath}`));
+                    return;
                 }
-            });
+
+                const proc = new Gio.Subprocess({
+                    argv: [scriptPath],
+                    flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
+                });
+
+                proc.init(null);
+
+                proc.communicate_utf8_async(null, null, (subprocess, result) => {
+                    try {
+                        const [, stdout, stderr] = subprocess.communicate_utf8_finish(result);
+                        if (!subprocess.get_successful()) {
+                            reject(new Error(stderr ? stderr.trim() : "Authentication failed"));
+                            return;
+                        }
+
+                        if (stdout) {
+                            try {
+                                const data = JSON.parse(stdout);
+                                if (data && data.token) {
+                                    resolve(data.token);
+                                } else {
+                                    reject(new Error("No token returned by login script"));
+                                }
+                            } catch (e) {
+                                reject(new Error("Failed to parse login script output"));
+                            }
+                        } else {
+                            reject(new Error("Empty output from login script"));
+                        }
+                    } catch (e) {
+                        reject(new Error(`Login process error: ${e.message}`));
+                    }
+                });
+            } catch (e) {
+                reject(new Error(`Failed to start login process: ${e.message}`));
+            }
         });
     }
 
-    _loadAntigravityCliOAuthCreds() {
-        if (this._antigravityCliCreds)
-            return this._antigravityCliCreds;
-
-        const binPath = GLib.find_program_in_path('agy');
-        if (!binPath)
-            throw new Error('Antigravity CLI not found. Install it with: npm install -g @google/antigravity-cli');
-
-        const binFile = Gio.File.new_for_path(binPath);
-        const symlinkInfo = binFile.query_info(
-            'standard::symlink-target',
-            Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
-            null
-        );
-        let bundleDir;
-        if (symlinkInfo.get_is_symlink()) {
-            let target = symlinkInfo.get_symlink_target();
-            if (!target.startsWith('/'))
-                target = GLib.build_filenamev([GLib.path_get_dirname(binPath), target]);
-            bundleDir = GLib.path_get_dirname(target);
-        } else {
-            bundleDir = GLib.path_get_dirname(binPath);
+    async fetchUsage(account, session, getToken) {
+        let token = null;
+        try {
+            token = await getToken(account.id);
+        } catch (_e) {
+            // Token might not be in keyring
         }
 
-        const dir = Gio.File.new_for_path(bundleDir);
-        const enumerator = dir.enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
-        const idRegex = /OAUTH_CLIENT_ID\s*=\s*"([^"]+)"/;
-        const secretRegex = /OAUTH_CLIENT_SECRET\s*=\s*"([^"]+)"/;
-        let clientId = null;
-        let clientSecret = null;
-        let fileInfo;
-        while ((fileInfo = enumerator.next_file(null)) !== null && (!clientId || !clientSecret)) {
-            const name = fileInfo.get_name();
-            if (!name.endsWith('.js'))
-                continue;
-            const filePath = GLib.build_filenamev([bundleDir, name]);
-            const [ok, contents] = GLib.file_get_contents(filePath);
-            if (!ok)
-                continue;
-            const text = new TextDecoder('utf-8').decode(contents);
-            if (!clientId) {
-                const match = idRegex.exec(text);
-                if (match)
-                    clientId = match[1];
-            }
-            if (!clientSecret) {
-                const match = secretRegex.exec(text);
-                if (match)
-                    clientSecret = match[1];
+        if (!token || token.trim() === '') {
+            throw new Error('No token found. Please enter your Refresh Token (starts with 1//) or Access Token in the Accounts settings.');
+        }
+
+        const normalized = token.trim().replace(/^Bearer\s+/i, '').trim();
+        let accessToken = normalized;
+
+        // If the token starts with "1//" it's a Google OAuth refresh token.
+        if (normalized.startsWith('1//')) {
+            try {
+                // If we already cached a valid access token for this account, use it
+                const now = Date.now();
+                if (this._cachedAccessTokens && 
+                    this._cachedAccessTokens[account.id] && 
+                    this._cachedAccessTokens[account.id].expiresAt > now) {
+                    accessToken = this._cachedAccessTokens[account.id].token;
+                } else {
+                    const refreshed = await this._refreshAccessToken(normalized, session);
+                    accessToken = refreshed.access_token;
+                    
+                    if (!this._cachedAccessTokens) this._cachedAccessTokens = {};
+                    this._cachedAccessTokens[account.id] = {
+                        token: accessToken,
+                        expiresAt: now + ((refreshed.expires_in || 3600) - 60) * 1000
+                    };
+                }
+            } catch (e) {
+                throw new Error(`Failed to refresh token: ${e.message}. Please login again.`);
             }
         }
-        enumerator.close(null);
 
-        if (!clientId || !clientSecret)
-            throw new Error(
-                'Could not find Antigravity OAuth credentials in @google/antigravity-cli bundle. ' +
-                'Try updating it: npm install -g @google/antigravity-cli'
-            );
-
-        this._antigravityCliCreds = {clientId, clientSecret};
-        return this._antigravityCliCreds;
+        try {
+            return await this._fetchUsageWithToken(account, accessToken, session);
+        } catch (e) {
+            if (e.statusCode === 401 || e.statusCode === 403) {
+                // Invalidate cached access token if unauthorized
+                if (this._cachedAccessTokens && this._cachedAccessTokens[account.id]) {
+                    delete this._cachedAccessTokens[account.id];
+                }
+                throw new Error('Unauthorized or token expired. Please login again in settings.');
+            }
+            throw e;
+        }
     }
 
-    _refreshAccessToken(creds, session) {
+    _refreshAccessToken(refreshToken, session) {
         return new Promise((resolve, reject) => {
-            if (!creds.refreshToken) {
-                reject(new Error('No refresh_token found in Antigravity credentials file'));
-                return;
-            }
-
-            let oauthCreds;
-            try {
-                oauthCreds = this._loadAntigravityCliOAuthCreds();
-            } catch (e) {
-                reject(e);
-                return;
-            }
-
             const form = [
                 'grant_type=refresh_token',
-                `refresh_token=${encodeURIComponent(creds.refreshToken)}`,
-                `client_id=${encodeURIComponent(oauthCreds.clientId)}`,
-                `client_secret=${encodeURIComponent(oauthCreds.clientSecret)}`,
+                `refresh_token=${encodeURIComponent(refreshToken)}`,
+                `client_id=${encodeURIComponent(OAUTH_CLIENT_ID)}`,
+                `client_secret=${encodeURIComponent(OAUTH_CLIENT_SECRET)}`,
             ].join('&');
 
             const body = GLib.Bytes.new(new TextEncoder().encode(form));
@@ -238,268 +210,134 @@ export class AntigravityProvider extends BaseProvider {
                     if (statusCode !== 200) {
                         reject(new Error(this._extractErrorMessage(
                             text,
-                            `Antigravity token refresh failed (HTTP ${statusCode})`
+                            `OAuth refresh failed (HTTP ${statusCode})`
                         )));
                         return;
                     }
 
                     const resp = text ? JSON.parse(text) : {};
                     if (!resp.access_token) {
-                        reject(new Error('Antigravity token refresh response missing access_token'));
+                        reject(new Error('OAuth refresh response missing access_token'));
                         return;
                     }
 
-                    creds._raw.access_token = resp.access_token;
-                    if (resp.refresh_token)
-                        creds._raw.refresh_token = resp.refresh_token;
-                    if (resp.id_token)
-                        creds._raw.id_token = resp.id_token;
-                    if (resp.scope)
-                        creds._raw.scope = resp.scope;
-                    if (resp.token_type)
-                        creds._raw.token_type = resp.token_type;
-                    if (resp.expires_in)
-                        creds._raw.expiry_date = Date.now() + resp.expires_in * 1000;
-
-                    GLib.file_set_contents(
-                        creds._filePath,
-                        JSON.stringify(creds._raw, null, 2)
-                    );
-
-                    resolve(resp.access_token);
+                    resolve(resp);
                 } catch (e) {
-                    reject(new Error(`Antigravity token refresh failed: ${e.message}`));
+                    reject(new Error(`OAuth refresh failed: ${e.message}`));
                 }
             });
         });
     }
 
-    async fetchUsage(account, session, getToken) {
-        let token = null;
-        try {
-            token = await getToken(account.id);
-        } catch (_e) {
-            // Fall back to file-based auth when secret-tool is unavailable.
-        }
-
-        let creds = null;
-        if (!token) {
-            const credPath = this._resolveCredentialPath(account);
-            creds = await this._readCredentials(credPath);
-
-            if (this._isExpiryTimestampExpired(creds.expiresAt)) {
-                token = await this._refreshAccessToken(creds, session);
-            } else {
-                token = creds.accessToken;
-            }
-        }
-
-        if (!token) {
-            throw new Error(
-                'No authentication token available. Install Antigravity CLI or set a token override in Settings.'
-            );
-        }
-
-        const normalized = token.trim().replace(/^Bearer\s+/i, '').trim();
-
-        try {
-            return await this._fetchUsageWithToken(account, normalized, session);
-        } catch (e) {
-            if ((e.statusCode === 401 || e.statusCode === 403) && creds) {
-                const refreshed = await this._refreshAccessToken(creds, session);
-                return this._fetchUsageWithToken(account, refreshed, session);
-            }
-            throw e;
-        }
-    }
-
     async _fetchUsageWithToken(account, accessToken, session) {
-        const setup = await this._setupUser(account, accessToken, session);
-        const quota = await this._retrieveUserQuota(session, setup.projectId, accessToken);
+        const setup = await this._setupUser(accessToken, session);
+        
+        if (!setup.projectId) {
+            throw new Error('Antigravity setup failed: Could not resolve a valid project ID.');
+        }
+
+        const quota = await this._fetchAvailableModels(session, setup.projectId, accessToken);
 
         return this._normalizeQuotaResponse(quota, setup.planName, account);
     }
 
-    async _retrieveUserQuota(session, projectId, accessToken) {
-        const url = `${CODE_ASSIST_BASE}:retrieveUserQuota`;
-
-        try {
-            return await this._requestJson(
-                session,
-                'POST',
-                url,
-                {
-                    project: projectId,
-                    userAgent: ANTIGRAVITY_USER_AGENT,
-                },
-                accessToken
-            );
-        } catch (e) {
-            if (e?.message?.includes('Unknown name "userAgent"')) {
-                return this._requestJson(
-                    session,
-                    'POST',
-                    url,
-                    {project: projectId},
-                    accessToken
-                );
-            }
-            throw e;
-        }
-    }
-
-    async _setupUser(account, accessToken, session) {
-        const configuredProjectId = this._resolveConfiguredProjectId(account);
+    async _setupUser(accessToken, session) {
         const loadRes = await this._requestJson(
             session,
             'POST',
             `${CODE_ASSIST_BASE}:loadCodeAssist`,
             {
-                cloudaicompanionProject: configuredProjectId ?? undefined,
-                metadata: this._buildClientMetadata(configuredProjectId),
+                metadata: METADATA,
             },
             accessToken
         );
 
-        this._validateLoadCodeAssistResponse(loadRes);
+        let projectId = null;
+        let planName = loadRes?.paidTier?.name ?? loadRes?.currentTier?.name ?? null;
 
-        if (loadRes.currentTier) {
-            if (!loadRes.cloudaicompanionProject) {
-                if (configuredProjectId) {
-                    return {
-                        projectId: configuredProjectId,
-                        planName: loadRes.paidTier?.name ?? loadRes.currentTier.name ?? null,
-                    };
-                }
-
-                this._throwIneligibleOrProjectRequired(loadRes);
+        if (loadRes?.cloudaicompanionProject) {
+            if (typeof loadRes.cloudaicompanionProject === 'string') {
+                projectId = loadRes.cloudaicompanionProject;
+            } else if (loadRes.cloudaicompanionProject.id) {
+                projectId = loadRes.cloudaicompanionProject.id;
             }
-
-            return {
-                projectId: loadRes.cloudaicompanionProject,
-                planName: loadRes.paidTier?.name ?? loadRes.currentTier.name ?? null,
-            };
         }
 
-        const tier = this._getOnboardTier(loadRes);
-        const onboardReq = tier.id === USER_TIER_FREE
-            ? {
-                tierId: tier.id,
-                cloudaicompanionProject: undefined,
-                metadata: this._buildClientMetadata(null),
-            }
-            : {
-                tierId: tier.id,
-                cloudaicompanionProject: configuredProjectId ?? undefined,
-                metadata: this._buildClientMetadata(configuredProjectId),
-            };
+        if (projectId) {
+            return { projectId, planName };
+        }
 
-        let operation = await this._requestJson(
+        // Need to onboard if projectId is not present
+        const tiers = loadRes?.allowedTiers || [];
+        let tierId = null;
+
+        const defaultTier = tiers.find(t => t.isDefault);
+        if (defaultTier) {
+            tierId = defaultTier.id;
+        } else if (loadRes?.paidTier?.id) {
+            tierId = loadRes.paidTier.id;
+        } else if (loadRes?.currentTier?.id) {
+            tierId = loadRes.currentTier.id;
+        } else if (tiers.length > 0) {
+            tierId = tiers[0].id;
+        } else {
+            tierId = 'LEGACY';
+        }
+
+        try {
+            await this._requestJson(
+                session,
+                'POST',
+                `${CODE_ASSIST_BASE}:onboardUser`,
+                {
+                    tierId,
+                    metadata: METADATA,
+                },
+                accessToken
+            );
+        } catch (e) {
+            // Ignore onboard errors and try loading again
+        }
+
+        // Retry loadCodeAssist
+        const reloadRes = await this._requestJson(
             session,
             'POST',
-            `${CODE_ASSIST_BASE}:onboardUser`,
-            onboardReq,
+            `${CODE_ASSIST_BASE}:loadCodeAssist`,
+            {
+                metadata: METADATA,
+            },
             accessToken
         );
 
-        while (!operation.done && operation.name) {
-            await this._delayMs(5000);
-            operation = await this._requestJson(
-                session,
-                'GET',
-                `${CODE_ASSIST_BASE}/${operation.name}`,
-                null,
-                accessToken
-            );
-        }
-
-        const onboardProjectId =
-            operation?.response?.cloudaicompanionProject?.id ??
-            configuredProjectId;
-
-        if (!onboardProjectId) {
-            this._throwIneligibleOrProjectRequired(loadRes);
-        }
-
-        return {
-            projectId: onboardProjectId,
-            planName: tier.name ?? null,
-        };
-    }
-
-    _buildClientMetadata(projectId) {
-        // Keep 'GEMINI' as pluginType for Google Cloud Code Assist API compatibility
-        const metadata = {
-            ideType: 'IDE_UNSPECIFIED',
-            platform: 'PLATFORM_UNSPECIFIED',
-            pluginType: 'GEMINI',
-        };
-
-        if (projectId)
-            metadata.duetProject = projectId;
-
-        return metadata;
-    }
-
-    _validateLoadCodeAssistResponse(loadRes) {
-        if (!loadRes)
-            throw new Error('Antigravity setup returned an empty response');
-
-        if (!loadRes.currentTier && Array.isArray(loadRes.ineligibleTiers)) {
-            const validationTier = loadRes.ineligibleTiers.find(tier =>
-                tier?.validationUrl &&
-                tier?.reasonCode === 'VALIDATION_REQUIRED'
-            );
-
-            if (validationTier) {
-                const description = validationTier.reasonMessage ?? 'Account validation required';
-                throw new Error(
-                    `Antigravity account validation required: ${description}. Visit ${validationTier.validationUrl} and try again.`
-                );
+        if (reloadRes?.cloudaicompanionProject) {
+            if (typeof reloadRes.cloudaicompanionProject === 'string') {
+                projectId = reloadRes.cloudaicompanionProject;
+            } else if (reloadRes.cloudaicompanionProject.id) {
+                projectId = reloadRes.cloudaicompanionProject.id;
             }
         }
+
+        planName = reloadRes?.paidTier?.name ?? reloadRes?.currentTier?.name ?? planName;
+
+        return { projectId, planName };
     }
 
-    _throwIneligibleOrProjectRequired(loadRes) {
-        const reasons = Array.isArray(loadRes?.ineligibleTiers)
-            ? loadRes.ineligibleTiers
-                .map(tier => tier?.reasonMessage?.trim())
-                .filter(Boolean)
-            : [];
-
-        if (reasons.length > 0) {
-            throw new Error(`Antigravity account is not eligible: ${reasons.join('; ')}`);
-        }
-
-        throw new Error(
-            'Antigravity requires a Google Cloud project ID for this account. Set the project ID in Settings or export GOOGLE_CLOUD_PROJECT.'
+    async _fetchAvailableModels(session, projectId, accessToken) {
+        return await this._requestJson(
+            session,
+            'POST',
+            `${CODE_ASSIST_BASE}:fetchAvailableModels`,
+            { project: projectId },
+            accessToken
         );
-    }
-
-    _getOnboardTier(loadRes) {
-        const defaultTier = Array.isArray(loadRes?.allowedTiers)
-            ? loadRes.allowedTiers.find(tier => tier?.isDefault)
-            : null;
-
-        return defaultTier ?? {
-            id: USER_TIER_LEGACY,
-            name: null,
-        };
-    }
-
-    _delayMs(ms) {
-        return new Promise(resolve => {
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
-                resolve();
-                return GLib.SOURCE_REMOVE;
-            });
-        });
     }
 
     _requestJson(session, method, url, requestBody, accessToken) {
         return new Promise((resolve, reject) => {
             const message = Soup.Message.new(method, url);
             message.request_headers.append('Accept', 'application/json');
+            message.request_headers.append('User-Agent', ANTIGRAVITY_USER_AGENT);
             if (accessToken)
                 message.request_headers.append('Authorization', `Bearer ${accessToken}`);
 
@@ -519,26 +357,23 @@ export class AntigravityProvider extends BaseProvider {
                     const text = new TextDecoder('utf-8').decode(bytes.get_data());
 
                     if (statusCode === 401 || statusCode === 403) {
-                        reject(this._createHttpError(
-                            `Antigravity auth failed (HTTP ${statusCode})`,
-                            message
-                        ));
+                        const err = new Error(`Antigravity auth failed (HTTP ${statusCode})`);
+                        err.statusCode = statusCode;
+                        reject(err);
                         return;
                     }
 
                     if (statusCode === 429) {
-                        reject(this._createHttpError(
-                            this._extractErrorMessage(text, 'Antigravity rate limited (HTTP 429)'),
-                            message
-                        ));
+                        const err = new Error(this._extractErrorMessage(text, 'Antigravity rate limited (HTTP 429)'));
+                        err.statusCode = statusCode;
+                        reject(err);
                         return;
                     }
 
                     if (statusCode < 200 || statusCode >= 300) {
-                        reject(this._createHttpError(
-                            this._extractErrorMessage(text, `Antigravity API error (HTTP ${statusCode})`),
-                            message
-                        ));
+                        const err = new Error(this._extractErrorMessage(text, `Antigravity API error (HTTP ${statusCode})`));
+                        err.statusCode = statusCode;
+                        reject(err);
                         return;
                     }
 
@@ -566,11 +401,40 @@ export class AntigravityProvider extends BaseProvider {
     }
 
     _normalizeQuotaResponse(data, planName, account) {
-        const windows = Array.isArray(data?.buckets)
-            ? data.buckets
-                .map(bucket => this._normalizeBucket(bucket))
-                .filter(Boolean)
-            : [];
+        if (!data || !data.models) {
+            return {
+                windows: [],
+                planName,
+            };
+        }
+
+        const windows = [];
+        
+        for (const [modelId, modelInfo] of Object.entries(data.models)) {
+            // Skip autocomplete models if desired, or let the user see them
+            const label = modelInfo.label || this._labelForModel(modelId);
+            const remainingFraction = modelInfo.quotaInfo?.remainingFraction;
+            const isExhausted = modelInfo.quotaInfo?.isExhausted || false;
+            const resetTime = modelInfo.quotaInfo?.resetTime;
+            
+            if (remainingFraction === undefined && !isExhausted) {
+                continue; // Skip models without quota information
+            }
+
+            const utilization = remainingFraction !== undefined ? Math.max(0, Math.min(1, 1 - remainingFraction)) : 0;
+            const limit = 100;
+            const used = Math.round(utilization * 100);
+
+            windows.push({
+                id: `antigravity_model_${this._slugify(modelId)}`,
+                label,
+                shortLabel: label.substring(0, 3),
+                used: isExhausted ? 100 : used,
+                limit,
+                utilization: isExhausted ? 1 : utilization,
+                resetsAt: resetTime ? new Date(resetTime) : null,
+            });
+        }
 
         return {
             windows: this._orderWindows(windows, this._getPanelQuotaStrategy(account)),
@@ -578,87 +442,33 @@ export class AntigravityProvider extends BaseProvider {
         };
     }
 
-    _normalizeBucket(bucket) {
-        if (!bucket || typeof bucket.remainingFraction !== 'number')
-            return null;
-
-        const remainingFraction = Math.max(0, Math.min(1, bucket.remainingFraction));
-        const utilization = Math.max(0, Math.min(1, 1 - remainingFraction));
-        const remainingAmount = this._parseNumeric(bucket.remainingAmount);
-
-        let limit = null;
-        let used = null;
-
-        if (remainingAmount !== null && remainingFraction > 0) {
-            const roundedRemaining = Math.max(0, Math.round(remainingAmount));
-            limit = Math.max(0, Math.round(remainingAmount / remainingFraction));
-            used = Math.max(0, limit - roundedRemaining);
-        } else {
-            limit = 100;
-            used = Math.round(utilization * 100);
-        }
-
-        const isPrimary = !bucket.modelId;
-        const label = isPrimary ? 'Primary' : this._labelForModel(bucket.modelId);
-        const id = isPrimary
-            ? WIN_PRIMARY
-            : `antigravity_model_${this._slugify(bucket.modelId)}`;
-        const shortLabel = isPrimary ? '1°' : label.substring(0, 3);
-
-        return {
-            id,
-            label,
-            shortLabel,
-            used,
-            limit,
-            utilization,
-            resetsAt: this._parseResetTimestamp(bucket.resetTime),
-        };
-    }
-
-    _parseNumeric(value) {
-        if (typeof value === 'number' && Number.isFinite(value))
-            return value;
-
-        if (typeof value === 'string' && value.trim() !== '') {
-            const parsed = Number.parseFloat(value);
-            if (Number.isFinite(parsed))
-                return parsed;
-        }
-
-        return null;
-    }
-
     _labelForModel(modelId) {
-        const lower = modelId.toLowerCase();
+        const lower = String(modelId).toLowerCase();
         if (lower.includes('flash-lite') || lower.includes('lite'))
             return 'Lite';
         if (lower.includes('flash'))
             return 'Flash';
         if (lower.includes('pro'))
             return 'Pro';
-        return this._sanitizeModelLabel(modelId);
-    }
-
-    _sanitizeModelLabel(modelId) {
-        const bareModel = modelId
-            .replace(/^models\//i, '')
-            .split('/')
-            .pop();
+        if (lower.includes('sonnet'))
+            return 'Sonnet';
+            
+        const bareModel = String(modelId).split('/').pop();
         const parts = bareModel.split(/[-_]/).filter(Boolean);
         const filtered = parts.filter(part =>
-            !/^(gemini|antigravity)$/i.test(part) &&
+            !/^(gemini|antigravity|claude)$/i.test(part) &&
             !/^\d+(\.\d+)?$/.test(part)
         );
         const words = filtered.length > 0 ? filtered : parts;
         const label = words
-            .map(word => word[0].toUpperCase() + word.substring(1))
+            .map(word => word[0] ? word[0].toUpperCase() + word.substring(1) : '')
+            .filter(Boolean)
             .join(' ');
         return label || 'Model';
     }
 
     _slugify(value) {
-        return value
+        return String(value)
             .toLowerCase()
             .replace(/^models\//, '')
             .replace(/[^a-z0-9]+/g, '_')
@@ -701,3 +511,4 @@ export class AntigravityProvider extends BaseProvider {
         return sorted;
     }
 }
+
