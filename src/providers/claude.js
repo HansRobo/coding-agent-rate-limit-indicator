@@ -137,69 +137,7 @@ export class ClaudeProvider extends BaseProvider {
         });
     }
 
-    /**
-     * Use the refresh_token to obtain a new access_token, then write
-     * the updated credentials back to the file.
-     */
-    _refreshAccessToken(creds, session) {
-        return new Promise((resolve, reject) => {
-            if (!creds.refreshToken) {
-                reject(new Error('No refresh_token in Claude credentials file'));
-                return;
-            }
 
-            const body = GLib.Bytes.new(
-                new TextEncoder().encode(
-                    `grant_type=refresh_token` +
-                    `&refresh_token=${encodeURIComponent(creds.refreshToken)}` +
-                    `&client_id=${encodeURIComponent(CLIENT_ID)}`
-                )
-            );
-
-            const msg = Soup.Message.new('POST', TOKEN_ENDPOINT);
-            msg.request_headers.append(
-                'Content-Type', 'application/x-www-form-urlencoded'
-            );
-            msg.set_request_body_from_bytes('application/x-www-form-urlencoded', body);
-
-            session.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, null, (sess, result) => {
-                try {
-                    const bytes = sess.send_and_read_finish(result);
-                    const statusCode = msg.get_status();
-
-                    const text = new TextDecoder('utf-8').decode(bytes.get_data());
-
-                    if (statusCode !== 200) {
-                        reject(new Error(`Token refresh failed (HTTP ${statusCode}): ${text}`));
-                        return;
-                    }
-
-                    const resp = JSON.parse(text);
-
-                    if (!resp.access_token) {
-                        reject(new Error('Token refresh response missing access_token'));
-                        return;
-                    }
-
-                    const raw = creds._raw;
-                    raw.claudeAiOauth.accessToken = resp.access_token;
-                    if (resp.refresh_token)
-                        raw.claudeAiOauth.refreshToken = resp.refresh_token;
-                    if (resp.expires_in)
-                        raw.claudeAiOauth.expiresAt = Date.now() + resp.expires_in * 1000;
-
-                    GLib.file_set_contents(
-                        creds._filePath,
-                        JSON.stringify(raw, null, 2)
-                    );
-
-                    resolve(resp.access_token);
-                } catch (e) {
-                    reject(new Error(`Token refresh error: ${e.message}`));
-                }
-            });
-        });
-    }
 
     async fetchUsage(account, session, getToken) {
         // Try keyring first (manual override). Treat failures as "no keyring token".
@@ -215,9 +153,9 @@ export class ClaudeProvider extends BaseProvider {
             const credPath = this._resolveCredentialPath(account);
             creds = await this._readCredentials(credPath);
 
-            // Proactively refresh if the token is expired or about to expire
+            // If the token is expired, do NOT refresh it to avoid invalidating the CLI's token.
             if (this._isExpiryTimestampExpired(creds.expiresAt)) {
-                token = await this._refreshAccessToken(creds, session);
+                throw new Error('Auth expired, please run claude code to refresh');
             } else {
                 token = creds.accessToken;
             }
@@ -229,10 +167,9 @@ export class ClaudeProvider extends BaseProvider {
         try {
             return await this._callUsageApi(token, session);
         } catch (e) {
-            // On auth failure, try refreshing the token once and retry
-            if ((e.statusCode === 401 || e.statusCode === 403) && creds) {
-                const newToken = await this._refreshAccessToken(creds, session);
-                return this._callUsageApi(newToken, session);
+            // Do not attempt to refresh token automatically.
+            if (e.statusCode === 401 || e.statusCode === 403) {
+                throw new Error('Auth failed, please run claude code to authenticate');
             }
             throw e;
         }
@@ -243,6 +180,8 @@ export class ClaudeProvider extends BaseProvider {
             const message = Soup.Message.new('GET', API_URL);
             message.request_headers.append('Authorization', `Bearer ${token}`);
             message.request_headers.append('anthropic-beta', BETA_HEADER);
+            message.request_headers.append('anthropic-version', '2023-06-01');
+            message.request_headers.append('User-Agent', 'claude-code/2.1.168');
 
             session.send_and_read_async(
                 message,

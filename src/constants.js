@@ -1,12 +1,12 @@
 // Shared constants for the Coding Agent Rate Limit Indicator extension.
 
 // --- Defaults ---
-export const DEFAULT_REFRESH_INTERVAL = 300; // seconds
-export const MIN_REFRESH_INTERVAL = 60;
-export const MAX_REFRESH_INTERVAL = 3600;
+export const DEFAULT_REFRESH_INTERVAL = 1800; // 30 minutes
+export const MIN_REFRESH_INTERVAL = 900; // 15 minutes
+export const MAX_REFRESH_INTERVAL = 86400; // 24 hours
 export const HTTP_TIMEOUT = 30; // seconds
-export const DEFAULT_RETRY_AFTER_SECS = 60;
-export const DEFAULT_ERROR_BACKOFF_SECS = 30;
+export const DEFAULT_RETRY_AFTER_SECS = 600;
+export const DEFAULT_ERROR_BACKOFF_SECS = 300;
 export const SETTINGS_DEBOUNCE_MS = 2000;
 
 // --- Display modes ---

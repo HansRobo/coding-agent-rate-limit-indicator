@@ -93,8 +93,8 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             adjustment: new Gtk.Adjustment({
                 lower: MIN_REFRESH_INTERVAL,
                 upper: MAX_REFRESH_INTERVAL,
-                step_increment: 30,
-                page_increment: 60,
+                step_increment: 300,
+                page_increment: 900,
                 value: settings.get_int('refresh-interval'),
             }),
         });

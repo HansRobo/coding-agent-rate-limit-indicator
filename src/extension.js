@@ -125,6 +125,7 @@ class RateLimitIndicator extends PanelMenu.Button {
 
     _createSession() {
         const session = new Soup.Session({timeout: HTTP_TIMEOUT});
+        session.user_agent = 'CodingAgentRateLimitIndicator/1.0';
 
         const proxyUrl = this._settings.get_string('proxy-url');
         if (proxyUrl && proxyUrl.trim() !== '') {
@@ -229,11 +230,18 @@ class RateLimitIndicator extends PanelMenu.Button {
                 return;
             }
 
-            // Fetch all accounts in parallel
-            const promises = visibleAccounts.map(account =>
-                this._fetchAccount(account)
-            );
-            await Promise.allSettled(promises);
+            // Fetch all accounts sequentially to avoid triggering concurrency rate limits
+            for (const account of visibleAccounts) {
+                if (this._destroyed) break;
+                await this._fetchAccount(account);
+                // Add a small delay between accounts
+                await new Promise(resolve => {
+                    const timerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+                        resolve();
+                        return GLib.SOURCE_REMOVE;
+                    });
+                });
+            }
         } catch (e) {
             console.error('Rate Limit Indicator: Refresh error:', e.message);
         } finally {
@@ -276,11 +284,15 @@ class RateLimitIndicator extends PanelMenu.Button {
                 backoffUntil: null,
             });
         } catch (e) {
-            const backoffSecs = e.statusCode === 429 ? (e.retryAfter ?? DEFAULT_RETRY_AFTER_SECS) : DEFAULT_ERROR_BACKOFF_SECS;
+            const isRateLimit = e.statusCode === 429;
+            const backoffSecs = isRateLimit ? (e.retryAfter ?? DEFAULT_RETRY_AFTER_SECS) : DEFAULT_ERROR_BACKOFF_SECS;
             const backoffUntil = Date.now() + backoffSecs * 1000;
+
             this._accountStates.set(account.id, {
                 result: prevState?.result ?? null,
-                error: e.message,
+                // Suppress error message for 429s to avoid distracting the user.
+                // We just silently backoff and show the stale data.
+                error: isRateLimit ? null : e.message,
                 stale: prevState?.result !== null,
                 lastUpdated: prevState?.lastUpdated ?? null,
                 backoffUntil,
