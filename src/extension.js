@@ -20,6 +20,7 @@ import {
     DISPLAY_MODE_TEXT,
     DISPLAY_MODE_BAR,
     DISPLAY_MODE_BOTH,
+    PANEL_TIME_DISPLAY_RECOVERY,
     THRESHOLD_LOW,
     THRESHOLD_MEDIUM,
     THRESHOLD_HIGH,
@@ -116,7 +117,9 @@ class RateLimitIndicator extends PanelMenu.Button {
 
         // --- Start timer and initial fetch ---
         this._timerId = null;
+        this._panelTimeTimerId = null;
         this._startTimer();
+        this._startPanelTimeTimer();
         this._refresh();
         this._prefetchIcons();
     }
@@ -186,6 +189,25 @@ class RateLimitIndicator extends PanelMenu.Button {
         }
     }
 
+    _startPanelTimeTimer() {
+        this._stopPanelTimeTimer();
+        this._panelTimeTimerId = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT,
+            60,
+            () => {
+                this._updatePanelDisplay();
+                return GLib.SOURCE_CONTINUE;
+            }
+        );
+    }
+
+    _stopPanelTimeTimer() {
+        if (this._panelTimeTimerId !== null) {
+            GLib.source_remove(this._panelTimeTimerId);
+            this._panelTimeTimerId = null;
+        }
+    }
+
     // --- Settings ---
 
     _onSettingChanged(key) {
@@ -194,6 +216,7 @@ class RateLimitIndicator extends PanelMenu.Button {
             this._startTimer();
             break;
         case 'display-mode':
+        case 'panel-time-display-mode':
             this._updatePanelDisplay();
             break;
         case 'proxy-url':
@@ -374,6 +397,9 @@ class RateLimitIndicator extends PanelMenu.Button {
                     statusText = state?.error ? 'Err' : '--';
                 } else {
                     const pct = Math.round(primaryWindow.utilization * 100);
+                    const resetText = primaryWindow.resetsAt
+                        ? ` ↻${this._formatPanelResetTime(primaryWindow.resetsAt)}`
+                        : '';
 
                     // Disambiguate when multiple accounts share the same provider
                     const sameProvider = visibleAccounts.filter(
@@ -388,9 +414,9 @@ class RateLimitIndicator extends PanelMenu.Button {
                             .join('')
                             .toUpperCase()
                             .substring(0, 2) || '??';
-                        statusText = `(${initials}): ${pct}%`;
+                        statusText = `(${initials}): ${pct}%${resetText}`;
                     } else {
-                        statusText = `: ${pct}%`;
+                        statusText = `: ${pct}%${resetText}`;
                     }
                 }
 
@@ -714,6 +740,26 @@ class RateLimitIndicator extends PanelMenu.Button {
         }
     }
 
+    _formatPanelResetTime(resetDate) {
+        const mode = this._settings.get_string('panel-time-display-mode');
+        if (mode === PANEL_TIME_DISPLAY_RECOVERY)
+            return this._formatRecoveryTime(resetDate);
+
+        return this._formatResetTime(resetDate);
+    }
+
+    _formatRecoveryTime(resetDate) {
+        try {
+            if (resetDate.getTime() <= Date.now()) return 'now';
+
+            const hours = String(resetDate.getHours()).padStart(2, '0');
+            const minutes = String(resetDate.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
+        } catch (e) {
+            return '--';
+        }
+    }
+
     _formatTimeAgo(date) {
         const diffMs = Date.now() - date.getTime();
         const seconds = Math.floor(diffMs / 1000);
@@ -730,6 +776,7 @@ class RateLimitIndicator extends PanelMenu.Button {
     destroy() {
         this._destroyed = true;
         this._stopTimer();
+        this._stopPanelTimeTimer();
 
         if (this._debounceTimerId !== null) {
             GLib.source_remove(this._debounceTimerId);

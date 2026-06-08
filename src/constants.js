@@ -14,6 +14,10 @@ export const DISPLAY_MODE_TEXT = 'text';
 export const DISPLAY_MODE_BAR = 'bar';
 export const DISPLAY_MODE_BOTH = 'both';
 
+// --- Panel time display modes ---
+export const PANEL_TIME_DISPLAY_REMAINING = 'remaining';
+export const PANEL_TIME_DISPLAY_RECOVERY = 'recovery';
+
 // --- Usage thresholds for color coding ---
 export const THRESHOLD_LOW = 0.4;
 export const THRESHOLD_MEDIUM = 0.7;

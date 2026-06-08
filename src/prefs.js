@@ -14,6 +14,8 @@ import {
     DISPLAY_MODE_TEXT,
     DISPLAY_MODE_BAR,
     DISPLAY_MODE_BOTH,
+    PANEL_TIME_DISPLAY_REMAINING,
+    PANEL_TIME_DISPLAY_RECOVERY,
 } from './constants.js';
 
 import {
@@ -122,6 +124,26 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             settings.set_string('display-mode', modeMap[displayModeRow.get_selected()]);
         });
         displayGroup.add(displayModeRow);
+
+        // Panel reset time display
+        const timeDisplayRow = new Adw.ComboRow({
+            title: 'Time display',
+            subtitle: 'How reset time appears in the panel',
+            model: Gtk.StringList.new(['Remaining time', 'Recovery time']),
+        });
+        const timeDisplayMap = [
+            PANEL_TIME_DISPLAY_REMAINING,
+            PANEL_TIME_DISPLAY_RECOVERY,
+        ];
+        const currentTimeDisplay = settings.get_string('panel-time-display-mode');
+        timeDisplayRow.set_selected(Math.max(0, timeDisplayMap.indexOf(currentTimeDisplay)));
+        timeDisplayRow.connect('notify::selected', () => {
+            settings.set_string(
+                'panel-time-display-mode',
+                timeDisplayMap[timeDisplayRow.get_selected()]
+            );
+        });
+        displayGroup.add(timeDisplayRow);
 
         // Network group
         const networkGroup = new Adw.PreferencesGroup({

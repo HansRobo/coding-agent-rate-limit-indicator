@@ -17,6 +17,13 @@
       <description>How to display usage in the panel: text, bar, or both.</description>
     </key>
 
+    <!-- Panel reset time display: remaining countdown or recovery clock time -->
+    <key name="panel-time-display-mode" type="s">
+      <default>'remaining'</default>
+      <summary>Panel time display mode</summary>
+      <description>How to display reset time in the panel: remaining or recovery.</description>
+    </key>
+
     <!-- Whether to show provider icons in the panel -->
     <key name="show-provider-icon" type="b">
       <default>true</default>
