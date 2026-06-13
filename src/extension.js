@@ -31,6 +31,7 @@ import {
     DEFAULT_RETRY_AFTER_SECS,
     DEFAULT_ERROR_BACKOFF_SECS,
     SETTINGS_DEBOUNCE_MS,
+    INTER_ACCOUNT_DELAY_MS,
 } from './constants.js';
 
 import {IconCache} from './iconCache.js';
@@ -68,6 +69,11 @@ class RateLimitIndicator extends PanelMenu.Button {
 
         // Debounce timer for settings-triggered refreshes
         this._debounceTimerId = null;
+
+        // Inter-account throttle timer (tracked so destroy() can cancel it
+        // and release the awaiting refresh loop).
+        this._interAccountTimerId = null;
+        this._interAccountResolve = null;
 
         // Destroy guard for async safety
         this._destroyed = false;
@@ -259,16 +265,14 @@ class RateLimitIndicator extends PanelMenu.Button {
             }
 
             // Fetch all accounts sequentially to avoid triggering concurrency rate limits
-            for (const account of visibleAccounts) {
+            for (let i = 0; i < visibleAccounts.length; i++) {
                 if (this._destroyed) break;
-                await this._fetchAccount(account);
-                // Add a small delay between accounts
-                await new Promise(resolve => {
-                    const timerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-                        resolve();
-                        return GLib.SOURCE_REMOVE;
-                    });
-                });
+                const fetched = await this._fetchAccount(visibleAccounts[i]);
+                // Throttle only between actual network fetches; skip the delay
+                // when an account was backoff-skipped or after the last account.
+                const isLast = i === visibleAccounts.length - 1;
+                if (fetched && !isLast && !this._destroyed)
+                    await this._delayBetweenAccounts();
             }
         } catch (e) {
             console.error('Rate Limit Indicator: Refresh error:', e.message);
@@ -279,12 +283,33 @@ class RateLimitIndicator extends PanelMenu.Button {
         }
     }
 
+    // Throttle between sequential account fetches. The timer is tracked so
+    // destroy() can cancel it and resolve the awaiting promise (removing the
+    // source without resolving would leave the refresh loop hung).
+    _delayBetweenAccounts() {
+        return new Promise(resolve => {
+            this._interAccountResolve = resolve;
+            this._interAccountTimerId = GLib.timeout_add(
+                GLib.PRIORITY_DEFAULT,
+                INTER_ACCOUNT_DELAY_MS,
+                () => {
+                    this._interAccountTimerId = null;
+                    this._interAccountResolve = null;
+                    resolve();
+                    return GLib.SOURCE_REMOVE;
+                }
+            );
+        });
+    }
+
+    // Returns true if a network fetch was attempted, false if the account was
+    // skipped (backoff window active, or unknown provider).
     async _fetchAccount(account) {
         const prevState = this._accountStates.get(account.id);
 
         // Skip if still within backoff window
         if (prevState?.backoffUntil && prevState.backoffUntil > Date.now())
-            return;
+            return false;
 
         const provider = createProviderInstance(account.provider);
         if (!provider) {
@@ -295,7 +320,7 @@ class RateLimitIndicator extends PanelMenu.Button {
                 lastUpdated: null,
                 backoffUntil: null,
             });
-            return;
+            return false;
         }
 
         try {
@@ -321,11 +346,12 @@ class RateLimitIndicator extends PanelMenu.Button {
                 // Suppress error message for 429s to avoid distracting the user.
                 // We just silently backoff and show the stale data.
                 error: isRateLimit ? null : e.message,
-                stale: prevState?.result !== null,
+                stale: prevState?.result != null,
                 lastUpdated: prevState?.lastUpdated ?? null,
                 backoffUntil,
             });
         }
+        return true;
     }
 
     // --- Icon pre-fetching ---
@@ -558,13 +584,13 @@ class RateLimitIndicator extends PanelMenu.Button {
     }
 
     _isLightTheme() {
-        // St.SystemColorScheme (GNOME 44+): PREFER_DARK のみをダークと判定
+        // St.SystemColorScheme (GNOME 44+): treat only PREFER_DARK as dark.
         if (typeof St.SystemColorScheme !== 'undefined') {
             const scheme = this._stSettings?.color_scheme;
             if (scheme === St.SystemColorScheme.PREFER_DARK) return false;
             if (scheme === St.SystemColorScheme.PREFER_LIGHT) return true;
         }
-        // フォールバック: Gio.Settings の文字列を直接チェック (GNOME 42+)
+        // Fallback: read the Gio.Settings string directly (GNOME 42+).
         try {
             return this._ifaceSettings.get_string('color-scheme') !== 'prefer-dark';
         } catch (_e) {
@@ -773,7 +799,9 @@ class RateLimitIndicator extends PanelMenu.Button {
         const minutes = Math.floor(seconds / 60);
         if (minutes < 60) return `${minutes}m ago`;
         const hours = Math.floor(minutes / 60);
-        return `${hours}h${minutes % 60}m ago`;
+        if (hours < 24) return `${hours}h${minutes % 60}m ago`;
+        const days = Math.floor(hours / 24);
+        return `${days}d${hours % 24}h ago`;
     }
 
     // --- Cleanup ---
@@ -786,6 +814,17 @@ class RateLimitIndicator extends PanelMenu.Button {
         if (this._debounceTimerId !== null) {
             GLib.source_remove(this._debounceTimerId);
             this._debounceTimerId = null;
+        }
+
+        // Cancel any pending inter-account throttle and release the awaiting
+        // refresh loop so its promise does not hang.
+        if (this._interAccountTimerId !== null) {
+            GLib.source_remove(this._interAccountTimerId);
+            this._interAccountTimerId = null;
+        }
+        if (this._interAccountResolve) {
+            this._interAccountResolve();
+            this._interAccountResolve = null;
         }
 
         this._iconCache?.destroy();

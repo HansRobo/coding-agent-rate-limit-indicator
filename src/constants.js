@@ -8,6 +8,7 @@ export const HTTP_TIMEOUT = 30; // seconds
 export const DEFAULT_RETRY_AFTER_SECS = 600;
 export const DEFAULT_ERROR_BACKOFF_SECS = 300;
 export const SETTINGS_DEBOUNCE_MS = 2000;
+export const INTER_ACCOUNT_DELAY_MS = 500;
 
 // --- Display modes ---
 export const DISPLAY_MODE_TEXT = 'text';
