@@ -295,11 +295,12 @@ export class CodexProvider extends BaseProvider {
             if (flat) windows.push(flat);
         }
 
-        // Try to extract plan name
+        // Try to extract plan name. Only dedicated plan keys are consulted:
+        // a generic 'type' key matches unrelated fields (e.g. {type: 'TOKENS_LIMIT'})
+        // and would surface a garbage tier string.
         const planName =
             this._findDeep(data, 'plan_type') ??
             this._findDeep(data, 'tier') ??
-            this._findDeep(data, 'type') ??
             null;
 
         return {
@@ -376,7 +377,9 @@ export class CodexProvider extends BaseProvider {
         const parsed = this._parseWindowObject(obj, WIN_PRIMARY, 'Usage');
         // Only return if we found meaningful data
         if (parsed.used !== null || parsed.limit !== null || parsed.utilization > 0) {
-            return parsed;
+            // Structured windows carry an explicit shortLabel; the flat fallback
+            // must supply one too, otherwise the panel renders a '??' placeholder.
+            return {...parsed, shortLabel: 'RL'};
         }
         return null;
     }

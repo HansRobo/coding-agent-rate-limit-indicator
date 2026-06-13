@@ -9,11 +9,6 @@ import {BaseProvider} from './base.js';
 
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const CODE_ASSIST_BASE = 'https://cloudcode-pa.googleapis.com/v1internal';
-const WIN_PRIMARY = 'primary';
-
-const PANEL_QUOTA_MOST_CONSTRAINED = 'most_constrained';
-const PANEL_QUOTA_POOLED_FIRST = 'pooled_first';
-const PANEL_QUOTA_POOLED_ONLY = 'pooled_only';
 
 // Client credentials for the open source Google Cloud Code CLI / Antigravity CLI
 // Note: Desktop application OAuth secrets are inherently public
@@ -57,24 +52,11 @@ export class AntigravityProvider extends BaseProvider {
     }
 
     static getDefaultConfig() {
-        return {
-            panelQuotaStrategy: PANEL_QUOTA_MOST_CONSTRAINED,
-        };
+        return {};
     }
 
     static getConfigFields() {
-        return [
-            {
-                key: 'panelQuotaStrategy',
-                label: 'Panel quota strategy',
-                type: 'choice',
-                options: [
-                    {value: PANEL_QUOTA_MOST_CONSTRAINED, label: 'Most constrained'},
-                    {value: PANEL_QUOTA_POOLED_FIRST, label: 'Pooled first'},
-                    {value: PANEL_QUOTA_POOLED_ONLY, label: 'Pooled only'},
-                ],
-            },
-        ];
+        return [];
     }
 
     static get supportsBrowserLogin() {
@@ -238,7 +220,7 @@ export class AntigravityProvider extends BaseProvider {
 
         const quota = await this._fetchAvailableModels(session, setup.projectId, accessToken);
 
-        return this._normalizeQuotaResponse(quota, setup.planName, account);
+        return this._normalizeQuotaResponse(quota, setup.planName);
     }
 
     async _setupUser(accessToken, session) {
@@ -400,7 +382,7 @@ export class AntigravityProvider extends BaseProvider {
         return text.trim() || fallback;
     }
 
-    _normalizeQuotaResponse(data, planName, account) {
+    _normalizeQuotaResponse(data, planName) {
         if (!data || !data.models) {
             return {
                 windows: [],
@@ -437,7 +419,7 @@ export class AntigravityProvider extends BaseProvider {
         }
 
         return {
-            windows: this._orderWindows(windows, this._getPanelQuotaStrategy(account)),
+            windows: this._orderWindows(windows),
             planName,
         };
     }
@@ -475,40 +457,15 @@ export class AntigravityProvider extends BaseProvider {
             .replace(/^_+|_+$/g, '') || 'model';
     }
 
-    _getPanelQuotaStrategy(account) {
-        const strategy = account.config?.panelQuotaStrategy;
-        const allowed = new Set([
-            PANEL_QUOTA_MOST_CONSTRAINED,
-            PANEL_QUOTA_POOLED_FIRST,
-            PANEL_QUOTA_POOLED_ONLY,
-        ]);
-        return allowed.has(strategy) ? strategy : PANEL_QUOTA_MOST_CONSTRAINED;
-    }
-
-    _orderWindows(windows, strategy) {
-        const sorted = [...windows].sort((a, b) => {
+    // Order per-model windows most-constrained first so windows[0] is the
+    // tightest quota. Antigravity exposes only per-model quotas (no pooled or
+    // aggregate window), so a single deterministic ordering is sufficient.
+    _orderWindows(windows) {
+        return [...windows].sort((a, b) => {
             if (b.utilization !== a.utilization)
                 return b.utilization - a.utilization;
-            if (a.id === WIN_PRIMARY) return -1;
-            if (b.id === WIN_PRIMARY) return 1;
             return a.label.localeCompare(b.label);
         });
-
-        const primary = sorted.find(window => window.id === WIN_PRIMARY);
-        if (!primary)
-            return sorted;
-
-        if (strategy === PANEL_QUOTA_POOLED_ONLY)
-            return [primary];
-
-        if (strategy === PANEL_QUOTA_POOLED_FIRST) {
-            return [
-                primary,
-                ...sorted.filter(window => window.id !== WIN_PRIMARY),
-            ];
-        }
-
-        return sorted;
     }
 }
 
