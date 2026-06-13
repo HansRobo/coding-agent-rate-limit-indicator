@@ -4,7 +4,8 @@
   "scripts": {
     "build": "node build/build.mjs",
     "build:modern": "node build/build.mjs --target modern",
-    "build:legacy": "node build/build.mjs --target legacy"
+    "build:legacy": "node build/build.mjs --target legacy",
+    "test": "node --import ./tests/gjs-stub.mjs --test \"tests/**/*.test.mjs\""
   },
   "devDependencies": {
     "rollup": "^4"
