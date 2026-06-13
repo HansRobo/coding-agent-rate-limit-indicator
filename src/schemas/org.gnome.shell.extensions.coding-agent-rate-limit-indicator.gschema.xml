@@ -45,6 +45,13 @@
       <description>JSON array of account objects: [{id, provider, name, config}].</description>
     </key>
 
+    <!-- Internal counter bumped when stored credentials change -->
+    <key name="credential-revision" type="i">
+      <default>0</default>
+      <summary>Credential revision</summary>
+      <description>Internal counter incremented when stored credentials change.</description>
+    </key>
+
     <!-- IDs of accounts visible in the panel -->
     <key name="visible-account-ids" type="as">
       <default>[]</default>

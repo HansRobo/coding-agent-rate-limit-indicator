@@ -227,6 +227,9 @@ class RateLimitIndicator extends PanelMenu.Button {
             this._scheduleRefresh();
             this._prefetchIcons();
             break;
+        case 'credential-revision':
+            this._scheduleRefresh();
+            break;
         case 'show-provider-icon':
             this._updatePanelDisplay();
             break;

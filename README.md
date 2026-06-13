@@ -119,6 +119,7 @@ gnome-extensions prefs coding-agent-rate-limit-indicator@github.com
    - `Most constrained`: show the tightest quota bucket in the panel
    - `Pooled first`: prefer the pooled bucket when available
    - `Pooled only`: show only the pooled bucket in the panel
+7. To re-authenticate later, expand the account in Preferences → Accounts and click **"Re-login with Antigravity"**.
 
 ## Architecture
 

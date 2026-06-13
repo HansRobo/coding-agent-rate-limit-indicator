@@ -276,11 +276,14 @@ export default class RateLimitPreferences extends ExtensionPreferences {
                 tokenRow.connect('apply', () => {
                     const token = tokenRow.get_text().trim();
                     if (token) {
-                        storeToken(account.id, token);
+                        this._storeTokenAndNotify(settings, account.id, token);
                     }
                 });
                 expander.add_row(tokenRow);
             }
+
+            if (provider?.supportsBrowserLogin)
+                expander.add_row(this._createBrowserLoginRow(provider, account, settings));
 
             // Token entry for auto-detect providers (optional override)
             if (provider && !provider.requiresManualToken) {
@@ -291,7 +294,7 @@ export default class RateLimitPreferences extends ExtensionPreferences {
                 tokenRow.connect('apply', () => {
                     const token = tokenRow.get_text().trim();
                     if (token) {
-                        storeToken(account.id, token);
+                        this._storeTokenAndNotify(settings, account.id, token);
                     }
                 });
                 expander.add_row(tokenRow);
@@ -371,6 +374,62 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             });
         });
         return entryRow;
+    }
+
+    _createBrowserLoginRow(provider, account, settings) {
+        const row = new Adw.ActionRow({
+            title: `Re-login with ${provider.displayName}`,
+            subtitle: 'Replace the stored refresh token using browser authentication.',
+        });
+
+        const loginButton = new Gtk.Button({
+            label: 'Login',
+            valign: Gtk.Align.CENTER,
+        });
+        loginButton.add_css_class('suggested-action');
+        loginButton.connect('clicked', () => {
+            row.set_subtitle('Waiting for browser authentication...');
+            loginButton.set_label('Waiting...');
+            loginButton.set_sensitive(false);
+
+            provider.loginWithBrowser()
+                .then(token => {
+                    if (!token)
+                        throw new Error('No token returned by login script');
+
+                    return this._storeTokenAndNotify(settings, account.id, token);
+                })
+                .then(stored => {
+                    if (!stored)
+                        throw new Error('Failed to store token in GNOME Keyring');
+
+                    row.set_subtitle('Authentication successful. The indicator will refresh shortly.');
+                    loginButton.set_label('Login Again');
+                    loginButton.set_sensitive(true);
+                })
+                .catch(err => {
+                    console.error(err);
+                    row.set_subtitle(err.message || 'Authentication failed.');
+                    loginButton.set_label('Try Again');
+                    loginButton.set_sensitive(true);
+                });
+        });
+
+        row.add_suffix(loginButton);
+        return row;
+    }
+
+    _storeTokenAndNotify(settings, accountId, token) {
+        return storeToken(accountId, token).then(stored => {
+            if (stored)
+                this._bumpCredentialRevision(settings);
+            return stored;
+        });
+    }
+
+    _bumpCredentialRevision(settings) {
+        const current = settings.get_int('credential-revision');
+        settings.set_int('credential-revision', current >= 2147483646 ? 0 : current + 1);
     }
 
     _removeAccountRows(group) {
@@ -463,7 +522,7 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             if (tokenEntry) {
                 const token = tokenEntry.get_text().trim();
                 if (token)
-                    storeToken(account.id, token);
+                    this._storeTokenAndNotify(settings, account.id, token);
             }
             dialog.close();
         };
