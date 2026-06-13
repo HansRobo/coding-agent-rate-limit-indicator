@@ -75,9 +75,10 @@ class RateLimitIndicator extends PanelMenu.Button {
         // HTTP session
         this._session = this._createSession();
 
-        // Icon cache (fetches and caches provider SVG icons)
+        // Icon cache (fetches and caches provider SVG icons).
+        // Pass a session getter so it follows session recreation (proxy changes).
         this._iconCache = new IconCache(
-            this._session,
+            () => this._session,
             () => { if (!this._destroyed) this._updatePanelDisplay(); }
         );
 

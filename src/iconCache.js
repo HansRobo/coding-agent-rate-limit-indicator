@@ -10,11 +10,14 @@ const CACHE_SUBDIR = 'coding-agent-rate-limit-indicator/icons';
 
 export class IconCache {
     /**
-     * @param {Soup.Session} session     - Shared HTTP session for fetching
-     * @param {Function}     onIconReady - Called when a new icon becomes available (triggers UI refresh)
+     * @param {Function} getSession  - Returns the current shared HTTP session.
+     *                                 A getter (not a fixed reference) so the
+     *                                 cache always uses the live session after
+     *                                 a proxy-url change recreates it.
+     * @param {Function} onIconReady - Called when a new icon becomes available (triggers UI refresh)
      */
-    constructor(session, onIconReady) {
-        this._session = session;
+    constructor(getSession, onIconReady) {
+        this._getSession = getSession;
         this._onIconReady = onIconReady;
         this._destroyed = false;
 
@@ -113,7 +116,7 @@ export class IconCache {
 
             const message = Soup.Message.new('GET', url);
 
-            this._session.send_and_read_async(
+            this._getSession().send_and_read_async(
                 message,
                 GLib.PRIORITY_LOW,
                 null,
