@@ -5,14 +5,20 @@
 
     <!-- Refresh interval in seconds -->
     <key name="refresh-interval" type="i">
-      <default>300</default>
+      <default>1800</default>
+      <range min="900" max="86400"/>
       <summary>Refresh interval</summary>
-      <description>How often to fetch usage data, in seconds (60-3600).</description>
+      <description>How often to fetch usage data, in seconds (900-86400).</description>
     </key>
 
     <!-- Display mode: text, bar, or both -->
     <key name="display-mode" type="s">
       <default>'text'</default>
+      <choices>
+        <choice value="text"/>
+        <choice value="bar"/>
+        <choice value="both"/>
+      </choices>
       <summary>Panel display mode</summary>
       <description>How to display usage in the panel: text, bar, or both.</description>
     </key>
@@ -20,6 +26,10 @@
     <!-- Panel reset time display: remaining countdown or recovery clock time -->
     <key name="panel-time-display-mode" type="s">
       <default>'remaining'</default>
+      <choices>
+        <choice value="remaining"/>
+        <choice value="recovery"/>
+      </choices>
       <summary>Panel time display mode</summary>
       <description>How to display reset time in the panel: remaining or recovery.</description>
     </key>
@@ -34,6 +44,10 @@
     <!-- Icon style: color or monochrome -->
     <key name="icon-style" type="s">
       <default>'monochrome'</default>
+      <choices>
+        <choice value="monochrome"/>
+        <choice value="color"/>
+      </choices>
       <summary>Icon style</summary>
       <description>Icon rendering style: color or monochrome.</description>
     </key>

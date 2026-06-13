@@ -77,7 +77,7 @@ gnome-extensions prefs coding-agent-rate-limit-indicator@github.com
 
 ### General Settings
 
-- **Refresh interval**: 60–3600 seconds (default: 300)
+- **Refresh interval**: 900–86400 seconds (default: 1800)
 - **Display mode**: Text, Progress Bar, or Both
 - **Time display**: Remaining reset countdown or local recovery time in the panel
 - **HTTP Proxy**: Optional proxy URL for API requests
