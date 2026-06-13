@@ -38,6 +38,7 @@ import {IconCache} from './iconCache.js';
 import {
     getVisibleAccounts,
     getAccountDisplayLabel,
+    migrateVisibilitySettings,
 } from './accounts.js';
 
 import {getToken} from './secret.js';
@@ -223,7 +224,7 @@ class RateLimitIndicator extends PanelMenu.Button {
             this._recreateSession();
             break;
         case 'accounts-json':
-        case 'visible-account-ids':
+        case 'hidden-account-ids':
             this._scheduleRefresh();
             this._prefetchIcons();
             break;
@@ -827,6 +828,7 @@ class RateLimitIndicator extends PanelMenu.Button {
 export default class CodingAgentRateLimitExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
+        migrateVisibilitySettings(this._settings);
         this._indicator = new RateLimitIndicator(
             this.path,
             this._settings,

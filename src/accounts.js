@@ -40,39 +40,64 @@ export function saveAccounts(settings, accounts) {
 }
 
 /**
- * Get visible account IDs from GSettings.
+ * Get hidden account IDs from GSettings.
+ * An empty list means every account is visible.
  * @param {Gio.Settings} settings
  * @returns {string[]}
  */
-export function loadVisibleIds(settings) {
-    return settings.get_strv('visible-account-ids');
+export function loadHiddenIds(settings) {
+    return settings.get_strv('hidden-account-ids');
 }
 
 /**
- * Set visible account IDs.
+ * Set hidden account IDs.
  * @param {Gio.Settings} settings
  * @param {string[]} ids
  */
-export function saveVisibleIds(settings, ids) {
-    settings.set_strv('visible-account-ids', ids);
+export function saveHiddenIds(settings, ids) {
+    settings.set_strv('hidden-account-ids', ids);
 }
 
 /**
- * Get only the accounts marked as visible.
- * If no visibility filter is set, all accounts are visible.
+ * Migrate the legacy `visible-account-ids` whitelist to the inverse
+ * `hidden-account-ids` blacklist. Safe to call repeatedly: it only acts
+ * when the legacy key is non-empty, and clears it afterwards.
+ *
+ * The legacy key used an empty list as an implicit "all visible" sentinel,
+ * which broke when toggled literally (e.g. hiding the last account made all
+ * accounts reappear). The blacklist has no such sentinel: empty = show all,
+ * and toggles are always literal.
+ *
+ * @param {Gio.Settings} settings
+ */
+export function migrateVisibilitySettings(settings) {
+    const legacyVisible = settings.get_strv('visible-account-ids');
+    if (legacyVisible.length === 0) return;
+
+    const visibleSet = new Set(legacyVisible);
+    const hidden = loadAccounts(settings)
+        .map(a => a.id)
+        .filter(id => !visibleSet.has(id));
+
+    saveHiddenIds(settings, hidden);
+    settings.set_strv('visible-account-ids', []);
+}
+
+/**
+ * Get only the accounts that are not hidden.
  * @param {Gio.Settings} settings
  * @returns {Array<Object>}
  */
 export function getVisibleAccounts(settings) {
     const accounts = loadAccounts(settings);
-    const visibleIds = loadVisibleIds(settings);
+    const hiddenIds = loadHiddenIds(settings);
 
-    if (visibleIds.length === 0) {
+    if (hiddenIds.length === 0) {
         return accounts;
     }
 
-    const idSet = new Set(visibleIds);
-    return accounts.filter(a => idSet.has(a.id));
+    const idSet = new Set(hiddenIds);
+    return accounts.filter(a => !idSet.has(a.id));
 }
 
 /**
@@ -94,10 +119,8 @@ export function addAccount(settings, provider, name, config = {}) {
     accounts.push(account);
     saveAccounts(settings, accounts);
 
-    // Auto-add to visible list
-    const visibleIds = loadVisibleIds(settings);
-    visibleIds.push(account.id);
-    saveVisibleIds(settings, visibleIds);
+    // New accounts are visible by default (not in the hidden list), so no
+    // visibility bookkeeping is required here.
 
     return account;
 }
@@ -133,9 +156,10 @@ export function removeAccount(settings, accountId) {
     const accounts = loadAccounts(settings).filter(a => a.id !== accountId);
     saveAccounts(settings, accounts);
 
-    // Also remove from visible list
-    const visibleIds = loadVisibleIds(settings).filter(id => id !== accountId);
-    saveVisibleIds(settings, visibleIds);
+    // Also drop any hidden-list entry so a future account reusing this id
+    // does not start out hidden.
+    const hiddenIds = loadHiddenIds(settings).filter(id => id !== accountId);
+    saveHiddenIds(settings, hiddenIds);
 }
 
 /**
@@ -165,16 +189,16 @@ export function moveAccount(settings, accountId, direction) {
  * @param {boolean} visible
  */
 export function setAccountVisibility(settings, accountId, visible) {
-    let visibleIds = loadVisibleIds(settings);
-    const isCurrentlyVisible = visibleIds.includes(accountId);
+    let hiddenIds = loadHiddenIds(settings);
+    const isCurrentlyHidden = hiddenIds.includes(accountId);
 
-    if (visible && !isCurrentlyVisible) {
-        visibleIds.push(accountId);
-    } else if (!visible && isCurrentlyVisible) {
-        visibleIds = visibleIds.filter(id => id !== accountId);
+    if (!visible && !isCurrentlyHidden) {
+        hiddenIds.push(accountId);
+    } else if (visible && isCurrentlyHidden) {
+        hiddenIds = hiddenIds.filter(id => id !== accountId);
     }
 
-    saveVisibleIds(settings, visibleIds);
+    saveHiddenIds(settings, hiddenIds);
 }
 
 /**

@@ -66,11 +66,18 @@
       <description>Internal counter incremented when stored credentials change.</description>
     </key>
 
-    <!-- IDs of accounts visible in the panel -->
+    <!-- IDs of accounts hidden from the panel (empty = all visible) -->
+    <key name="hidden-account-ids" type="as">
+      <default>[]</default>
+      <summary>Hidden account IDs</summary>
+      <description>List of account IDs to hide from the panel and menu. An empty list means every account is visible.</description>
+    </key>
+
+    <!-- Deprecated: legacy visibility whitelist, migrated to hidden-account-ids -->
     <key name="visible-account-ids" type="as">
       <default>[]</default>
-      <summary>Visible account IDs</summary>
-      <description>List of account IDs to display in the panel and menu.</description>
+      <summary>Visible account IDs (deprecated)</summary>
+      <description>Deprecated legacy whitelist of visible account IDs. Migrated to hidden-account-ids on first run and no longer read; retained only for one-time migration.</description>
     </key>
 
     <!-- HTTP proxy URL (empty = no proxy) -->

@@ -20,7 +20,8 @@ import {
 
 import {
     loadAccounts,
-    loadVisibleIds,
+    loadHiddenIds,
+    migrateVisibilitySettings,
     addAccount,
     updateAccount,
     removeAccount,
@@ -38,6 +39,7 @@ import {
 export default class RateLimitPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
+        migrateVisibilitySettings(settings);
 
         // Track signal connections for cleanup
         const signalIds = [];
@@ -210,7 +212,7 @@ export default class RateLimitPreferences extends ExtensionPreferences {
 
     _renderAccountRows(group, settings, window) {
         const accounts = loadAccounts(settings);
-        const visibleIds = new Set(loadVisibleIds(settings));
+        const hiddenIds = new Set(loadHiddenIds(settings));
         this._accountRows = [];
 
         if (accounts.length === 0) {
@@ -240,7 +242,7 @@ export default class RateLimitPreferences extends ExtensionPreferences {
 
             // Visibility toggle
             const visibleSwitch = new Gtk.Switch({
-                active: visibleIds.size === 0 || visibleIds.has(account.id),
+                active: !hiddenIds.has(account.id),
                 valign: Gtk.Align.CENTER,
             });
             visibleSwitch.connect('notify::active', () => {
