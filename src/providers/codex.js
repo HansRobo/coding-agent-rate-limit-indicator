@@ -10,7 +10,6 @@ import {BaseProvider} from './base.js';
 const API_BASE = 'https://chatgpt.com';
 const USAGE_ENDPOINT = '/backend-api/wham/usage';
 const REFERER = 'https://chatgpt.com/codex/settings/usage';
-const AUTH_TOKEN_ENDPOINT = 'https://auth.openai.com/oauth/token';
 const WIN_PRIMARY = 'primary';
 const WIN_WEEKLY = 'weekly';
 
@@ -165,101 +164,17 @@ export class CodexProvider extends BaseProvider {
         return Date.now() / 1000 >= payload.exp - bufferSec;
     }
 
-    /**
-     * Extract the client_id claim from a JWT payload.
-     * Falls back to the known Codex CLI client ID if parsing fails.
-     */
-    _extractClientId(token) {
-        const payload = this._decodeJwtPayload(token);
-        return payload?.client_id ?? 'app_EMoamEEZ73f0CkXaXp7hrann';
-    }
-
-    /**
-     * Use the refresh_token in auth.json to obtain a new access_token, then
-     * write the updated tokens back to the file.
-     */
-    _refreshAccessToken(filePath, session) {
-        return new Promise((resolve, reject) => {
-            const file = Gio.File.new_for_path(filePath);
-            file.load_contents_async(null, (f, loadResult) => {
-                try {
-                    const [ok, contents] = f.load_contents_finish(loadResult);
-                    if (!ok) {
-                        reject(new Error(`Failed to read ${filePath} for refresh`));
-                        return;
-                    }
-
-                    const decoder = new TextDecoder('utf-8');
-                    const json = JSON.parse(decoder.decode(contents));
-
-                    const refreshToken = json?.tokens?.refresh_token;
-                    if (!refreshToken) {
-                        reject(new Error('No refresh_token found in Codex auth file'));
-                        return;
-                    }
-
-                    const currentAccessToken = json?.tokens?.access_token ?? '';
-                    const clientId = this._extractClientId(currentAccessToken);
-
-                    const body = GLib.Bytes.new(
-                        new TextEncoder().encode(
-                            `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}&client_id=${encodeURIComponent(clientId)}`
-                        )
-                    );
-
-                    const msg = Soup.Message.new('POST', AUTH_TOKEN_ENDPOINT);
-                    msg.request_headers.append('Content-Type', 'application/x-www-form-urlencoded');
-                    msg.set_request_body_from_bytes('application/x-www-form-urlencoded', body);
-
-                    session.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, null, (sess, sendResult) => {
-                        try {
-                            const bytes = sess.send_and_read_finish(sendResult);
-                            const statusCode = msg.get_status();
-
-                            if (statusCode !== 200) {
-                                reject(new Error(`Token refresh failed (HTTP ${statusCode})`));
-                                return;
-                            }
-
-                            const respText = new TextDecoder('utf-8').decode(bytes.get_data());
-                            const resp = JSON.parse(respText);
-
-                            if (!resp.access_token) {
-                                reject(new Error('Token refresh response missing access_token'));
-                                return;
-                            }
-
-                            // Write updated tokens back to auth.json
-                            json.tokens.access_token = resp.access_token;
-                            if (resp.refresh_token) json.tokens.refresh_token = resp.refresh_token;
-                            if (resp.id_token) json.tokens.id_token = resp.id_token;
-                            json.last_refresh = new Date().toISOString();
-
-                            GLib.file_set_contents(filePath, JSON.stringify(json, null, 4));
-
-                            resolve(resp.access_token);
-                        } catch (e) {
-                            reject(new Error(`Token refresh error: ${e.message}`));
-                        }
-                    });
-                } catch (e) {
-                    reject(new Error(`Failed to parse auth file for refresh: ${e.message}`));
-                }
-            });
-        });
-    }
-
     async fetchUsage(account, session, getToken) {
-        // Keyring token (manual override) — use directly without refresh
+        // Keyring token (manual override) — use directly.
         const keyringToken = await getToken(account.id);
         if (keyringToken) {
             const normalized = keyringToken.trim().replace(/^Bearer\s+/i, '').trim();
             return this._callUsageApi(normalized, session);
         }
 
-        // File-based token — refresh if expired, then call API
+        // File-based token from the Codex CLI auth file.
         const credPath = this._resolveCredentialPath(account);
-        let token = await this._readTokenFromFile(credPath);
+        const token = await this._readTokenFromFile(credPath);
 
         if (!token) {
             throw new Error(
@@ -267,19 +182,22 @@ export class CodexProvider extends BaseProvider {
             );
         }
 
-        let normalized = token.trim().replace(/^Bearer\s+/i, '').trim();
+        const normalized = token.trim().replace(/^Bearer\s+/i, '').trim();
 
+        // Do NOT refresh the token here. The Codex CLI owns auth.json and is the
+        // only writer; refreshing from the extension would persist a rotated
+        // refresh token and can invalidate the CLI's own login under token
+        // rotation / reuse detection. If the token is expired, ask the user to
+        // let the CLI refresh it.
         if (this._isTokenExpired(normalized)) {
-            normalized = await this._refreshAccessToken(credPath, session);
+            throw new Error('Codex token expired, please run codex to refresh');
         }
 
         try {
             return await this._callUsageApi(normalized, session);
         } catch (e) {
-            // On 401, try one refresh and retry
-            if (e.message.includes('401') || e.message.includes('403')) {
-                normalized = await this._refreshAccessToken(credPath, session);
-                return this._callUsageApi(normalized, session);
+            if (e.statusCode === 401 || e.statusCode === 403) {
+                throw new Error('Auth failed, please run codex to authenticate');
             }
             throw e;
         }
@@ -308,12 +226,17 @@ export class CodexProvider extends BaseProvider {
                         const statusCode = message.get_status();
 
                         if (statusCode === 401 || statusCode === 403) {
-                            reject(new Error(`Auth failed (HTTP ${statusCode}). Token may be expired.`));
+                            reject(this._createHttpError(`Auth failed (HTTP ${statusCode}). Token may be expired.`, message));
+                            return;
+                        }
+
+                        if (statusCode === 429) {
+                            reject(this._createHttpError('Rate limited (HTTP 429)', message));
                             return;
                         }
 
                         if (statusCode !== 200) {
-                            reject(new Error(`HTTP ${statusCode}`));
+                            reject(this._createHttpError(`HTTP ${statusCode}`, message));
                             return;
                         }
 

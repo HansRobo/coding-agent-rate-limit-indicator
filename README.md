@@ -15,7 +15,7 @@ A GNOME Shell extension that monitors rate limit usage for multiple coding agent
 - **Extensible architecture**: Clean provider pattern makes it easy to add new services
 - **Secure credential storage**: Tokens stored in GNOME Keyring (Secret Service)
 - **Auto-detect credentials**: Claude Code, Codex, and Antigravity read OAuth tokens from local config automatically
-- **Automatic token refresh**: OAuth tokens are refreshed automatically when expired (Claude, Codex, Antigravity)
+- **Safe credential handling**: For CLI-managed providers (Claude, Codex) the extension is a read-only consumer — it never refreshes or rewrites the CLI's auth file. Antigravity tokens, which the extension owns, are refreshed automatically.
 - **Rate limit resilience**: 429 responses trigger per-account backoff using `Retry-After` header
 - **Proxy support**: Optional HTTP proxy for all API requests
 
