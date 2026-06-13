@@ -255,6 +255,7 @@ class RateLimitIndicator extends PanelMenu.Button {
     async _refresh() {
         if (this._refreshInFlight || this._destroyed) return;
         this._refreshInFlight = true;
+        if (this.menu.isOpen) this._buildMenu();
 
         try {
             const visibleAccounts = getVisibleAccounts(this._settings);
@@ -270,6 +271,9 @@ class RateLimitIndicator extends PanelMenu.Button {
             for (let i = 0; i < visibleAccounts.length; i++) {
                 if (this._destroyed) break;
                 const fetched = await this._fetchAccount(visibleAccounts[i]);
+                // Reflect each completed fetch live while the menu is open.
+                if (!this._destroyed && this.menu.isOpen)
+                    this._buildMenu();
                 // Throttle only between actual network fetches; skip the delay
                 // when an account was backoff-skipped or after the last account.
                 const isLast = i === visibleAccounts.length - 1;
@@ -280,8 +284,10 @@ class RateLimitIndicator extends PanelMenu.Button {
             console.error('Rate Limit Indicator: Refresh error:', e.message);
         } finally {
             this._refreshInFlight = false;
-            if (!this._destroyed)
+            if (!this._destroyed) {
                 this._updatePanelDisplay();
+                if (this.menu.isOpen) this._buildMenu();
+            }
         }
     }
 
@@ -437,9 +443,14 @@ class RateLimitIndicator extends PanelMenu.Button {
                 const prefix = sameProvider.length > 1
                     ? `(${this._accountInitials(account)})`
                     : '';
+                const isHardError = displayWindows.length === 0 && Boolean(state?.error);
+                const isStale = Boolean(state?.stale);
                 const statusText = this._buildPanelStatusText(
                     displayWindows, prefix, Boolean(state?.error)
                 );
+                // Stale data (e.g. during backoff) is marked with a leading '~'
+                // and a dimmed segment; hard errors get an error color.
+                const displayText = isStale ? `~${statusText}` : statusText;
 
                 // Provider icon or text fallback
                 let iconWidget = null;
@@ -471,12 +482,19 @@ class RateLimitIndicator extends PanelMenu.Button {
                     });
                 }
 
-                segment.add_child(iconWidget);
-                segment.add_child(new St.Label({
+                const statusLabel = new St.Label({
                     style_class: 'panel-rate-limit-label',
-                    text: statusText,
+                    text: displayText,
                     y_align: Clutter.ActorAlign.CENTER,
-                }));
+                });
+                if (isHardError)
+                    statusLabel.add_style_class_name('panel-error-label');
+
+                segment.add_child(iconWidget);
+                segment.add_child(statusLabel);
+
+                if (isStale)
+                    segment.set_opacity(150);
             }
 
             this._panelBox.add_child(segment);
@@ -575,21 +593,26 @@ class RateLimitIndicator extends PanelMenu.Button {
             style: 'spacing: 8px;',
         });
 
+        const inFlight = this._refreshInFlight;
         const refreshBtn = new St.BoxLayout({
             style_class: 'm3-pill-button m3-pill-button-secondary',
-            reactive: true,
-            track_hover: true,
+            reactive: !inFlight,
+            track_hover: !inFlight,
             x_expand: true,
         });
         refreshBtn.add_child(new St.Label({
-            text: '↺ Refresh',
+            text: inFlight ? '↻ Refreshing…' : '↺ Refresh',
             x_align: Clutter.ActorAlign.CENTER,
             x_expand: true,
         }));
-        refreshBtn.connect('button-release-event', () => {
-            this._refresh();
-            this.menu.close();
-        });
+        if (inFlight) {
+            refreshBtn.set_opacity(140);
+        } else {
+            refreshBtn.connect('button-release-event', () => {
+                this._refresh();
+                this.menu.close();
+            });
+        }
         actionBox.add_child(refreshBtn);
 
         const settingsBtn = new St.BoxLayout({
@@ -678,6 +701,15 @@ class RateLimitIndicator extends PanelMenu.Button {
             if (providerClass.brandColor)
                 pill.set_style(`background-color: ${providerClass.brandColor};`);
             headerRow.add_child(pill);
+        }
+
+        const planName = state?.result?.planName;
+        if (planName) {
+            headerRow.add_child(new St.Label({
+                style_class: 'm3-plan-label',
+                text: String(planName),
+                y_align: Clutter.ActorAlign.CENTER,
+            }));
         }
 
         if (state?.lastUpdated) {

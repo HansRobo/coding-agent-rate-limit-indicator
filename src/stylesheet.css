@@ -25,6 +25,11 @@
   font-weight: 500;
 }
 
+/* Hard-error status text in the panel (no data available) */
+.panel-error-label {
+  color: #e25555;
+}
+
 .panel-vbar-container {
   width: 5px;
   height: 20px;
@@ -64,6 +69,15 @@
   font-weight: 700;
   padding: 1px 7px;
   border-radius: 9999px;
+}
+
+/* Subscription plan badge (e.g. "pro", "lite") */
+.m3-plan-label {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background-color: rgba(128, 128, 128, 0.22);
 }
 
 /* Updated/stale timestamp */
