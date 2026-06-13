@@ -21,6 +21,8 @@ import {
     DISPLAY_MODE_BAR,
     DISPLAY_MODE_BOTH,
     PANEL_TIME_DISPLAY_RECOVERY,
+    PANEL_WINDOW_ALL,
+    PANEL_WINDOW_WORST,
     THRESHOLD_LOW,
     THRESHOLD_MEDIUM,
     THRESHOLD_HIGH,
@@ -399,11 +401,17 @@ class RateLimitIndicator extends PanelMenu.Button {
             return;
         }
 
+        const winMode = this._settings.get_string('panel-window-mode');
+
         for (let i = 0; i < visibleAccounts.length; i++) {
             const account = visibleAccounts[i];
             const state = this._accountStates.get(account.id);
             const providerClass = getProvider(account.provider);
-            const primaryWindow = state?.result?.windows?.[0] ?? null;
+            const windows = state?.result?.windows ?? [];
+            const displayWindows = this._selectPanelWindows(windows, winMode);
+            const barUtilization = displayWindows.length
+                ? Math.max(...displayWindows.map(w => w.utilization))
+                : 0;
 
             if (i > 0 && showContent) {
                 this._panelBox.add_child(new St.Label({
@@ -419,37 +427,19 @@ class RateLimitIndicator extends PanelMenu.Button {
             });
 
             if (showBars)
-                segment.add_child(this._createVerticalBar(primaryWindow?.utilization ?? 0));
+                segment.add_child(this._createVerticalBar(barUtilization));
 
             if (showContent) {
-                // Build status text
-                let statusText;
-                if (!primaryWindow) {
-                    statusText = state?.error ? 'Err' : '--';
-                } else {
-                    const pct = Math.round(primaryWindow.utilization * 100);
-                    const resetText = primaryWindow.resetsAt
-                        ? ` ↻${this._formatPanelResetTime(primaryWindow.resetsAt)}`
-                        : '';
-
-                    // Disambiguate when multiple accounts share the same provider
-                    const sameProvider = visibleAccounts.filter(
-                        a => a.provider === account.provider
-                    );
-                    if (sameProvider.length > 1) {
-                        const name = account.name?.trim() || '??';
-                        const initials = name
-                            .split(/\s+/)
-                            .filter(w => w.length > 0)
-                            .map(w => w[0])
-                            .join('')
-                            .toUpperCase()
-                            .substring(0, 2) || '??';
-                        statusText = `(${initials}): ${pct}%${resetText}`;
-                    } else {
-                        statusText = `: ${pct}%${resetText}`;
-                    }
-                }
+                // Disambiguate when multiple accounts share the same provider
+                const sameProvider = visibleAccounts.filter(
+                    a => a.provider === account.provider
+                );
+                const prefix = sameProvider.length > 1
+                    ? `(${this._accountInitials(account)})`
+                    : '';
+                const statusText = this._buildPanelStatusText(
+                    displayWindows, prefix, Boolean(state?.error)
+                );
 
                 // Provider icon or text fallback
                 let iconWidget = null;
@@ -491,6 +481,48 @@ class RateLimitIndicator extends PanelMenu.Button {
 
             this._panelBox.add_child(segment);
         }
+    }
+
+    // Pick the usage windows shown in the panel for one account, per the
+    // panel-window-mode setting. Returns [] when no data is available.
+    _selectPanelWindows(windows, mode) {
+        if (!windows.length) return [];
+        if (mode === PANEL_WINDOW_ALL) return windows;
+        if (mode === PANEL_WINDOW_WORST) {
+            return [windows.reduce((worst, w) =>
+                (w.utilization > worst.utilization ? w : worst))];
+        }
+        return [windows[0]]; // PANEL_WINDOW_PRIMARY (default)
+    }
+
+    _accountInitials(account) {
+        const name = account.name?.trim() || '??';
+        return name
+            .split(/\s+/)
+            .filter(w => w.length > 0)
+            .map(w => w[0])
+            .join('')
+            .toUpperCase()
+            .substring(0, 2) || '??';
+    }
+
+    _buildPanelStatusText(displayWindows, prefix, hasError) {
+        if (displayWindows.length === 0)
+            return hasError ? 'Err' : '--';
+
+        if (displayWindows.length === 1) {
+            const w = displayWindows[0];
+            const pct = Math.round(w.utilization * 100);
+            const resetText = w.resetsAt
+                ? ` ↻${this._formatPanelResetTime(w.resetsAt)}`
+                : '';
+            return `${prefix}: ${pct}%${resetText}`;
+        }
+
+        // 'all' mode: compact per-window list, reset suffix dropped to save space.
+        const parts = displayWindows.map(w =>
+            `${w.shortLabel ?? '?'}:${Math.round(w.utilization * 100)}%`);
+        return `${prefix ? prefix + ' ' : ''}${parts.join(' ')}`;
     }
 
     _createVerticalBar(utilization) {

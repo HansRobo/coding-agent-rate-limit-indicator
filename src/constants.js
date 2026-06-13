@@ -19,6 +19,14 @@ export const DISPLAY_MODE_BOTH = 'both';
 export const PANEL_TIME_DISPLAY_REMAINING = 'remaining';
 export const PANEL_TIME_DISPLAY_RECOVERY = 'recovery';
 
+// --- Panel window selection modes ---
+// Which usage window(s) a provider's account contributes to the panel:
+// 'primary' = the provider's first/preferred window, 'worst' = the highest
+// utilization window, 'all' = every window side by side.
+export const PANEL_WINDOW_PRIMARY = 'primary';
+export const PANEL_WINDOW_WORST = 'worst';
+export const PANEL_WINDOW_ALL = 'all';
+
 // --- Usage thresholds for color coding ---
 export const THRESHOLD_LOW = 0.4;
 export const THRESHOLD_MEDIUM = 0.7;

@@ -34,6 +34,18 @@
       <description>How to display reset time in the panel: remaining or recovery.</description>
     </key>
 
+    <!-- Panel window selection: which usage window(s) to show per account -->
+    <key name="panel-window-mode" type="s">
+      <default>'primary'</default>
+      <choices>
+        <choice value="primary"/>
+        <choice value="worst"/>
+        <choice value="all"/>
+      </choices>
+      <summary>Panel window mode</summary>
+      <description>Which usage window to show in the panel: primary (first), worst (highest usage), or all.</description>
+    </key>
+
     <!-- Whether to show provider icons in the panel -->
     <key name="show-provider-icon" type="b">
       <default>true</default>

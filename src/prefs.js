@@ -16,6 +16,9 @@ import {
     DISPLAY_MODE_BOTH,
     PANEL_TIME_DISPLAY_REMAINING,
     PANEL_TIME_DISPLAY_RECOVERY,
+    PANEL_WINDOW_PRIMARY,
+    PANEL_WINDOW_WORST,
+    PANEL_WINDOW_ALL,
 } from './constants.js';
 
 import {
@@ -146,6 +149,27 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             );
         });
         displayGroup.add(timeDisplayRow);
+
+        // Panel window selection
+        const windowModeRow = new Adw.ComboRow({
+            title: 'Panel window',
+            subtitle: 'Which usage window to show per account',
+            model: Gtk.StringList.new(['Primary', 'Worst', 'All windows']),
+        });
+        const windowModeMap = [
+            PANEL_WINDOW_PRIMARY,
+            PANEL_WINDOW_WORST,
+            PANEL_WINDOW_ALL,
+        ];
+        const currentWindowMode = settings.get_string('panel-window-mode');
+        windowModeRow.set_selected(Math.max(0, windowModeMap.indexOf(currentWindowMode)));
+        windowModeRow.connect('notify::selected', () => {
+            settings.set_string(
+                'panel-window-mode',
+                windowModeMap[windowModeRow.get_selected()]
+            );
+        });
+        displayGroup.add(windowModeRow);
 
         // Network group
         const networkGroup = new Adw.PreferencesGroup({
