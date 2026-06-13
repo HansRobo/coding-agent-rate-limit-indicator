@@ -32,7 +32,7 @@ import {
     moveAccount,
 } from './accounts.js';
 
-import {storeToken, clearToken} from './secret.js';
+import {getToken, storeToken, clearToken} from './secret.js';
 
 import {
     getProviderList,
@@ -215,6 +215,11 @@ export default class RateLimitPreferences extends ExtensionPreferences {
         // Track rows for reliable cleanup
         this._accountRows = [];
 
+        // Remember which account expanders are open so rename/reorder rebuilds
+        // (driven by changed::accounts-json) do not collapse them.
+        if (!this._expandedAccountIds)
+            this._expandedAccountIds = new Set();
+
         // Render current accounts
         this._renderAccountRows(accountsGroup, settings, window);
 
@@ -274,6 +279,15 @@ export default class RateLimitPreferences extends ExtensionPreferences {
             const expander = new Adw.ExpanderRow({
                 title: account.name || providerName,
                 subtitle: providerName,
+            });
+
+            // Restore and track expansion state across rebuilds.
+            expander.set_expanded(this._expandedAccountIds.has(account.id));
+            expander.connect('notify::expanded', () => {
+                if (expander.get_expanded())
+                    this._expandedAccountIds.add(account.id);
+                else
+                    this._expandedAccountIds.delete(account.id);
             });
 
             expander.add_prefix(this._createReorderButton('go-up-symbolic', 'Move up', index > 0, () => moveAccount(settings, account.id, 'up')));
@@ -340,6 +354,9 @@ export default class RateLimitPreferences extends ExtensionPreferences {
                 });
                 expander.add_row(tokenRow);
             }
+
+            // Stored-token status + clear control
+            expander.add_row(this._createTokenStatusRow(settings, account));
 
             // Remove button
             const removeRow = new Adw.ActionRow({
@@ -457,6 +474,51 @@ export default class RateLimitPreferences extends ExtensionPreferences {
         });
 
         row.add_suffix(loginButton);
+        return row;
+    }
+
+    // A row showing whether a token is stored in the keyring for this account,
+    // with a button to clear it. The keyring lookup is async, so the subtitle
+    // starts as "Checking…" and is filled in once the lookup resolves.
+    _createTokenStatusRow(settings, account) {
+        const row = new Adw.ActionRow({
+            title: 'Stored token',
+            subtitle: 'Checking…',
+        });
+
+        const clearButton = new Gtk.Button({
+            icon_name: 'edit-clear-symbolic',
+            valign: Gtk.Align.CENTER,
+            tooltip_text: 'Clear stored token',
+            sensitive: false,
+        });
+        clearButton.add_css_class('flat');
+
+        const refreshStatus = () => {
+            getToken(account.id)
+                .then(token => {
+                    const hasToken = Boolean(token);
+                    row.set_subtitle(hasToken
+                        ? 'A token is stored in the keyring'
+                        : 'No token stored');
+                    clearButton.set_sensitive(hasToken);
+                })
+                .catch(() => {
+                    row.set_subtitle('Unable to read the keyring');
+                    clearButton.set_sensitive(false);
+                });
+        };
+
+        clearButton.connect('clicked', () => {
+            clearButton.set_sensitive(false);
+            Promise.resolve(clearToken(account.id)).then(() => {
+                this._bumpCredentialRevision(settings);
+                refreshStatus();
+            });
+        });
+
+        row.add_suffix(clearButton);
+        refreshStatus();
         return row;
     }
 
