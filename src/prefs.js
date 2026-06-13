@@ -171,6 +171,21 @@ export default class RateLimitPreferences extends ExtensionPreferences {
         });
         displayGroup.add(windowModeRow);
 
+        // Desktop notifications toggle
+        const notifyRow = new Adw.ActionRow({
+            title: 'Desktop notifications',
+            subtitle: 'Notify when usage crosses the high threshold or resets',
+        });
+        const notifySwitch = new Gtk.Switch({
+            active: settings.get_boolean('enable-notifications'),
+            valign: Gtk.Align.CENTER,
+        });
+        settings.bind('enable-notifications', notifySwitch, 'active',
+            Gio.SettingsBindFlags.DEFAULT);
+        notifyRow.add_suffix(notifySwitch);
+        notifyRow.set_activatable_widget(notifySwitch);
+        displayGroup.add(notifyRow);
+
         // Network group
         const networkGroup = new Adw.PreferencesGroup({
             title: 'Network',

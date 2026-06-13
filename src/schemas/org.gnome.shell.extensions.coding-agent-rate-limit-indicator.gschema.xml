@@ -92,6 +92,13 @@
       <description>Deprecated legacy whitelist of visible account IDs. Migrated to hidden-account-ids on first run and no longer read; retained only for one-time migration.</description>
     </key>
 
+    <!-- Whether to show desktop notifications on threshold crossing / reset -->
+    <key name="enable-notifications" type="b">
+      <default>false</default>
+      <summary>Enable notifications</summary>
+      <description>Show a desktop notification when an account crosses the high-usage threshold or resets below it.</description>
+    </key>
+
     <!-- HTTP proxy URL (empty = no proxy) -->
     <key name="proxy-url" type="s">
       <default>''</default>

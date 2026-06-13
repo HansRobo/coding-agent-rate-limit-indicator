@@ -310,6 +310,46 @@ class RateLimitIndicator extends PanelMenu.Button {
         });
     }
 
+    // Emit a desktop notification when a window crosses the high-usage
+    // threshold (rising edge) or resets back below it. Only fires on a fresh
+    // successful fetch with prior data, so backoff/error refreshes never notify
+    // and the first load after enabling does not produce a burst.
+    _maybeNotify(account, prevResult, newResult) {
+        if (!prevResult || !newResult) return;
+        if (!this._settings.get_boolean('enable-notifications')) return;
+
+        const prevById = new Map(prevResult.windows.map(w => [w.id, w]));
+        const name = account.name?.trim() || 'Account';
+
+        for (const win of newResult.windows) {
+            const prev = prevById.get(win.id);
+            if (!prev) continue;
+
+            const crossedUp = prev.utilization < THRESHOLD_HIGH &&
+                win.utilization >= THRESHOLD_HIGH;
+            const crossedDown = prev.utilization >= THRESHOLD_HIGH &&
+                win.utilization < THRESHOLD_HIGH;
+            if (!crossedUp && !crossedDown) continue;
+
+            const pct = Math.round(win.utilization * 100);
+            try {
+                if (crossedUp) {
+                    Main.notify(
+                        `${name}: ${win.label} limit nearly reached`,
+                        `Usage is at ${pct}%.`
+                    );
+                } else {
+                    Main.notify(
+                        `${name}: ${win.label} reset`,
+                        `Usage is back down to ${pct}%.`
+                    );
+                }
+            } catch (e) {
+                console.error('Rate Limit Indicator: notify failed:', e.message);
+            }
+        }
+    }
+
     // Returns true if a network fetch was attempted, false if the account was
     // skipped (backoff window active, or unknown provider).
     async _fetchAccount(account) {
@@ -337,6 +377,7 @@ class RateLimitIndicator extends PanelMenu.Button {
                 this._session,
                 (accountId) => getToken(accountId)
             );
+            this._maybeNotify(account, prevState?.result ?? null, result);
             this._accountStates.set(account.id, {
                 result,
                 error: null,
