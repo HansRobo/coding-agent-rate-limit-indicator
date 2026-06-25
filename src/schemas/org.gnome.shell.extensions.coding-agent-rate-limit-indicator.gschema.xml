@@ -23,15 +23,16 @@
       <description>How to display usage in the panel: text, bar, or both.</description>
     </key>
 
-    <!-- Panel reset time display: remaining countdown or recovery clock time -->
+    <!-- Panel reset time display: remaining countdown (1h30m / 1:30) or recovery clock time -->
     <key name="panel-time-display-mode" type="s">
       <default>'remaining'</default>
       <choices>
         <choice value="remaining"/>
+        <choice value="remaining-colon"/>
         <choice value="recovery"/>
       </choices>
       <summary>Panel time display mode</summary>
-      <description>How to display reset time in the panel: remaining or recovery.</description>
+      <description>How to display reset time in the panel: remaining countdown in "1h30m" form, remaining countdown in "1:30" form (hours rolled up), or recovery clock time.</description>
     </key>
 
     <!-- Panel window selection: which usage window(s) to show per account -->

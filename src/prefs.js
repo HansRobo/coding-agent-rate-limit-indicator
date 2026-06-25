@@ -15,6 +15,7 @@ import {
     DISPLAY_MODE_BAR,
     DISPLAY_MODE_BOTH,
     PANEL_TIME_DISPLAY_REMAINING,
+    PANEL_TIME_DISPLAY_REMAINING_COLON,
     PANEL_TIME_DISPLAY_RECOVERY,
     PANEL_WINDOW_PRIMARY,
     PANEL_WINDOW_WORST,
@@ -133,11 +134,12 @@ export default class RateLimitPreferences extends ExtensionPreferences {
         // Panel reset time display
         const timeDisplayRow = new Adw.ComboRow({
             title: 'Time display',
-            subtitle: 'How reset time appears in the panel',
-            model: Gtk.StringList.new(['Remaining time', 'Recovery time']),
+            subtitle: 'How reset time appears in the panel (1h30m / 1:30 / recovery clock)',
+            model: Gtk.StringList.new(['Remaining (1h30m)', 'Remaining (1:30)', 'Recovery time']),
         });
         const timeDisplayMap = [
             PANEL_TIME_DISPLAY_REMAINING,
+            PANEL_TIME_DISPLAY_REMAINING_COLON,
             PANEL_TIME_DISPLAY_RECOVERY,
         ];
         const currentTimeDisplay = settings.get_string('panel-time-display-mode');

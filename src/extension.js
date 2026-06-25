@@ -21,6 +21,7 @@ import {
     DISPLAY_MODE_BAR,
     DISPLAY_MODE_BOTH,
     PANEL_TIME_DISPLAY_RECOVERY,
+    PANEL_TIME_DISPLAY_REMAINING_COLON,
     PANEL_WINDOW_ALL,
     PANEL_WINDOW_WORST,
     THRESHOLD_LOW,
@@ -837,7 +838,7 @@ class RateLimitIndicator extends PanelMenu.Button {
         if (window.resetsAt) {
             row.add_child(new St.Label({
                 style_class: 'm3-reset-label',
-                text: `↻${this._formatResetTime(window.resetsAt)}`,
+                text: `↻${this._formatPanelResetTime(window.resetsAt)}`,
                 x_expand: true,
                 x_align: Clutter.ActorAlign.END,
                 y_align: Clutter.ActorAlign.CENTER,
@@ -876,10 +877,26 @@ class RateLimitIndicator extends PanelMenu.Button {
         }
     }
 
+    _formatResetTimeColon(resetDate) {
+        try {
+            const diffMs = resetDate.getTime() - Date.now();
+            if (diffMs <= 0) return 'now';
+
+            const totalMinutes = Math.floor(diffMs / 60000);
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            return `${hours}:${String(minutes).padStart(2, '0')}`;
+        } catch (e) {
+            return '--';
+        }
+    }
+
     _formatPanelResetTime(resetDate) {
         const mode = this._settings.get_string('panel-time-display-mode');
         if (mode === PANEL_TIME_DISPLAY_RECOVERY)
             return this._formatRecoveryTime(resetDate);
+        if (mode === PANEL_TIME_DISPLAY_REMAINING_COLON)
+            return this._formatResetTimeColon(resetDate);
 
         return this._formatResetTime(resetDate);
     }

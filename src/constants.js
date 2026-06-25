@@ -17,6 +17,7 @@ export const DISPLAY_MODE_BOTH = 'both';
 
 // --- Panel time display modes ---
 export const PANEL_TIME_DISPLAY_REMAINING = 'remaining';
+export const PANEL_TIME_DISPLAY_REMAINING_COLON = 'remaining-colon';
 export const PANEL_TIME_DISPLAY_RECOVERY = 'recovery';
 
 // --- Panel window selection modes ---
